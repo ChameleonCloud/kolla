@@ -199,6 +199,9 @@ _CLI_OPTS = [
                 help='Set docker build time variables'),
     cfg.BoolOpt('keep', default=False,
                 help='Keep failed intermediate containers'),
+    cfg.ListOpt('disable-plugins', types.String(),
+                 help=('List of plugins to disable when building images. By'
+                       'default all plugins for an image are installed.')),
     cfg.BoolOpt('list-dependencies', short='l',
                 help='Show image dependencies (filtering supported)'),
     cfg.BoolOpt('list-images',

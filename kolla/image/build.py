@@ -908,9 +908,15 @@ class KollaWorker(object):
             'debian_package_install': jinja_methods.debian_package_install,
         }
 
+    def _get_all_sections(self):
+        ret = (set(six.iterkeys(self.conf._groups)) |
+               set(self.conf.list_all_sections()))
+        if self.conf.disable_plugins:
+            ret = [s for s in ret if s not in self.conf.disable_plugins]
+        return ret
+
     def get_users(self):
-        all_sections = (set(six.iterkeys(self.conf._groups)) |
-                        set(self.conf.list_all_sections()))
+        all_sections = self._get_all_sections()
         ret = dict()
         for section in all_sections:
             match = re.search('^.*-user$', section)
@@ -1168,8 +1174,7 @@ class KollaWorker(object):
                     installation['reference'] = self.conf[section]['reference']
             return installation
 
-        all_sections = (set(six.iterkeys(self.conf._groups)) |
-                        set(self.conf.list_all_sections()))
+        all_sections = self._get_all_sections()
 
         for path in self.docker_build_paths:
             # Reading parent image name

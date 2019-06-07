@@ -19,17 +19,25 @@ for bridge in "${!peers[@]}"; do
   fi
 done
 
+# (diurnalist): Batch all commands at once. This is needed because we may need
+# to create both patch ports, which depend on eachother. Adding them in one
+# batch avoids errors in OVS when adding the first port (b/c the second hasn't
+# been created yet.)
+declare -a batch=()
+
 for bridge in "${!peers[@]}"; do
   peer="${peers[$bridge]}"
-  # Remove br- suffixes
+  # Remove br- prefixes
   port="${bridge##br-}-${peer##br-}"
   peer_port="${peer##br-}-${bridge##br-}"
 
   if [[ ! $(ovs-vsctl list-ports $bridge) =~ $(echo "\<$port\>") ]]; then
       changed=changed
-      ovs-vsctl --no-wait add-port $bridge $port \
-        -- set interface $port type=patch options:peer=$peer_port
+      batch+=(-- add-port $bridge $port)
+      batch+=(-- set interface $port type=patch options:peer=$peer_port)
   fi
 done
+
+ovs-vsctl --no-wait "${batch[@]}"
 
 echo $changed

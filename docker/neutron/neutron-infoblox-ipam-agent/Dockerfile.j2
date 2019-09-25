@@ -1,5 +1,5 @@
 FROM {{ namespace }}/{{ image_prefix }}neutron-server:{{ tag }}
-LABEL maintainer="{{ maintainer }}" name="{{ image_name }}" build-date="{{ build_date }}"
+LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
 
 {% block neutron_infoblox_ipam_agent_header %}{% endblock %}
 

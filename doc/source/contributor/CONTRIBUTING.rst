@@ -85,7 +85,7 @@ is as follows:
 .. code-block:: console
 
    FROM {{ namespace }}/{{ image_prefix }}openstack-base:{{ tag }}
-   LABEL maintainer="{{ maintainer }}" name="{{ image_name }}" build-date="{{ build_date }}"
+   LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
 
    {% block << service >>_header %}{% endblock %}
 

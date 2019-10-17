@@ -32,7 +32,7 @@ import time
 from distutils.version import LooseVersion
 from distutils.version import StrictVersion
 import docker
-import git
+from git import Repo
 import jinja2
 from oslo_config import cfg
 from requests import exceptions as requests_exc
@@ -518,9 +518,11 @@ class BuildTask(DockerTask):
 
             try:
                 self.logger.debug("Cloning from %s", source['source'])
-                git.Git().clone(source['source'], clone_dir)
-                git.Git(clone_dir).checkout(source['reference'])
-                reference_sha = git.Git(clone_dir).rev_parse('HEAD')
+                repo = Repo.clone_from(source['source'], clone_dir)
+                remote = repo.remotes.origin
+                repo.create_head('tmp', remote.refs[source['reference']])
+                repo.heads.tmp.checkout()
+                reference_sha = repo.head.reference
                 self.logger.debug("Git checkout by reference %s (%s)",
                                   source['reference'], reference_sha)
             except Exception as e:
@@ -573,20 +575,27 @@ class BuildTask(DockerTask):
 
     def builder(self, image):
 
-        def make_an_archive(items, arcname, item_child_path=None):
-            if not item_child_path:
-                item_child_path = arcname
+        def nest_by_name(item, arcname):
+            strip_regex = r"^%s-%s-" % (image.name, arcname)
+            return re.sub(strip_regex, '', item['name'])
+
+        def make_an_archive(items, arcname, item_name_strategy=None):
             archives = list()
-            items_path = os.path.join(image.path, item_child_path)
+            items_path = os.path.join(image.path, arcname)
             for item in items:
                 archive_path = self.process_source(image, item)
                 if image.status in STATUS_ERRORS:
                     raise ArchivingError
-                archives.append(archive_path)
+                if item_name_strategy:
+                    archive_name = item_name_strategy(item, arcname)
+                else:
+                    archive_name = None
+                archives.append(dict(name=archive_name, path=archive_path))
             if archives:
                 for archive in archives:
-                    with tarfile.open(archive, 'r') as archive_tar:
-                        archive_tar.extractall(path=items_path)
+                    with tarfile.open(archive['path'], 'r') as archive_tar:
+                        extract_path = os.path.join(items_path, archive['name']) if archive['name'] else items_path
+                        archive_tar.extractall(path=extract_path)
             else:
                 try:
                     os.mkdir(items_path)
@@ -642,7 +651,7 @@ class BuildTask(DockerTask):
                     "Turned %s plugins into plugins archive",
                     plugins_am)
             try:
-                additions_am = make_an_archive(image.additions, 'additions')
+                additions_am = make_an_archive(image.additions, 'additions', item_name_strategy=nest_by_name)
             except ArchivingError:
                 self.logger.error(
                     "Failed turning any additions into a additions archive")

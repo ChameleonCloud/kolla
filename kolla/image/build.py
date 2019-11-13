@@ -1137,9 +1137,8 @@ class KollaWorker(object):
                                 ancestor_image.status = STATUS_MATCHED
                         LOG.debug('Image %s matched regex', image.name)
                 else:
-                    # we do not care if it is skipped or not as we did not
-                    # request it
-                    image.status = STATUS_UNMATCHED
+                    if image.status == STATUS_UNPROCESSED:
+                        image.status = STATUS_UNMATCHED
         else:
             for image in self.images:
                 if image.status != STATUS_UNBUILDABLE:

@@ -1112,8 +1112,7 @@ class KollaWorker(object):
                 if image.status == STATUS_MATCHED:
                     continue
                 if re.search(patterns, image.name):
-                    if image.status not in [STATUS_SKIPPED,
-                                            STATUS_UNBUILDABLE]:
+                    if image.status != STATUS_UNBUILDABLE:
                         image.status = STATUS_MATCHED
 
                     # skip image if --skip-existing was given and image
@@ -1127,7 +1126,8 @@ class KollaWorker(object):
                            ancestor_image.parent.status not in
                            (STATUS_MATCHED, STATUS_SKIPPED)):
                         ancestor_image = ancestor_image.parent
-                        if self.conf.skip_parents:
+                        if (self.conf.skip_parents and
+                            ancestor_image.status != STATUS_MATCHED):
                             ancestor_image.status = STATUS_SKIPPED
                         elif (self.conf.skip_existing and
                               ancestor_image.in_docker_cache()):

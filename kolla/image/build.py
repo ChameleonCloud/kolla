@@ -1045,8 +1045,9 @@ class KollaWorker(object):
         if filter_:
             patterns = re.compile(r"|".join(filter_).join('()'))
             for image in self.images:
-                if image.status in (STATUS_MATCHED, STATUS_SKIPPED):
+                if image.status == STATUS_MATCHED:
                     continue
+
                 if re.search(patterns, image.name):
                     image.status = STATUS_MATCHED
                     while (image.parent is not None and
@@ -1061,7 +1062,7 @@ class KollaWorker(object):
                         else:
                             image.status = STATUS_MATCHED
                         LOG.debug('Image %s matched regex', image.name)
-                else:
+                elif image.status == STATUS_UNPROCESSED:
                     image.status = STATUS_UNMATCHED
         else:
             for image in self.images:

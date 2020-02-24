@@ -10,14 +10,14 @@ LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
 {% if base_package_type == 'rpm' %}
     {% set elasticsearch_packages = [
         'java-11-openjdk-headless',
-        'elasticsearch-oss',
+        'elasticsearch',
     ] %}
 
 ENV JAVA_HOME /usr/lib/jvm/jre-11-openjdk/
 
 {% elif base_package_type == 'deb' %}
     {% set elasticsearch_packages = [
-        'elasticsearch-oss',
+        'elasticsearch',
     ] %}
 
 # NOTE(osmanlicilegi): post-install script of elasticsearch fails when trying to
@@ -29,6 +29,7 @@ ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-{{debian_arch}}/
 {% endif %}
 
 ENV ES_SKIP_SET_KERNEL_PARAMETERS true
+ENV ES_CONF_DIR /usr/share/elasticsearch/config
 
 {{ macros.install_packages(elasticsearch_packages | customizable("packages")) }}
 COPY extend_start.sh /usr/local/bin/kolla_extend_start

@@ -60,6 +60,7 @@ _PROFILE_OPTS = [
                     'keepalived',
                     'kibana',
                     'kolla-toolbox',
+                    'letsencrypt',
                     'logstash',
                     'mariadb',
                     'memcached',
@@ -1147,6 +1148,10 @@ USERS = {
     'masakari-user': {
         'uid': 42485,
         'gid': 42485,
+    },
+    'letsencrypt-user': {
+        'uid': 42486,
+        'gid': 42486,
     }
 }
 

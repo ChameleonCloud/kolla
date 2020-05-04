@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Adds support for automatically generating LetsEncrypt HTTPS certificates
+    via the ACME HTTP-01 challenge performed by certbot. Operators can deploy
+    LetsEncrypt containers that manage the automatic renewal of certificates.

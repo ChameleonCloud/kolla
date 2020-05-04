@@ -1,0 +1,14 @@
+FROM {{ namespace }}/{{ image_prefix }}letsencrypt-base:{{ tag }}
+LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
+
+{% block letsencrypt_certbot_header %}{% endblock %}
+
+{% import "macros.j2" as macros with context %}
+
+{% set letsencrypt_certbot_pip_packages = ['certbot'] %}
+RUN {{ macros.install_pip(letsencrypt_certbot_pip_packages | customizable("pip_packages"), constraints = false) }}
+
+{% block letsencrypt_certbot_footer %}{% endblock %}
+{% block footer %}{% endblock %}
+
+USER letsencrypt

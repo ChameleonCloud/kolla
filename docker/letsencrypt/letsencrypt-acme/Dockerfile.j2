@@ -1,0 +1,14 @@
+FROM {{ namespace }}/{{ image_prefix }}letsencrypt-base:{{ tag }}
+LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
+
+{% block letsencrypt_acme_header %}{% endblock %}
+
+{% import "macros.j2" as macros with context %}
+
+{% set letsencrypt_acme_packages = ['nginx'] %}
+{{ macros.install_packages(letsencrypt_acme_packages | customizable("packages")) }}
+
+{% block letsencrypt_acme_footer %}{% endblock %}
+{% block footer %}{% endblock %}
+
+USER letsencrypt

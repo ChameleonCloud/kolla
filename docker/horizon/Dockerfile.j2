@@ -1,4 +1,5 @@
-FROM {{ namespace }}/{{ image_prefix }}openstack-base:{{ tag }}
+ARG PARENT_TAG={{ tag }}
+FROM {{ namespace }}/{{ image_prefix }}openstack-base:$PARENT_TAG
 LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
 
 {% block horizon_header %}{% endblock %}

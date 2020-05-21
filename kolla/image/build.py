@@ -83,7 +83,6 @@ STATUS_ERRORS = (STATUS_CONNECTION_ERROR, STATUS_PUSH_ERROR,
 # is irrelevant. Otherwise all must match for skip to happen.
 UNBUILDABLE_IMAGES = {
     'aarch64': {
-        "cyborg-base",       # no binary package
         "monasca-grafana",   # no phantomJS on aarch64
         "opendaylight",      # no binary package
         "prometheus-mtail",  # no aarch64 binary
@@ -91,7 +90,6 @@ UNBUILDABLE_IMAGES = {
     },
 
     'ppc64le': {
-        "cyborg-base",       # no binary package
         "elasticsearch",     # no binary package
         "grafana",           # no binary package
         "kube-proxy",        # no binary
@@ -107,6 +105,7 @@ UNBUILDABLE_IMAGES = {
         "helm-repository",   # chart repository is gone
         "tripleoclient",
     },
+
     'binary': {
         "almanach-base",
         "bifrost-base",
@@ -174,13 +173,11 @@ UNBUILDABLE_IMAGES = {
 
     'centos8+source': {
         "bifrost-base",          # Cannot find a valid baseurl for repo: epel
-        "cyborg-agent",          # opae-sdk does not support CentOS 8
     },
 
     'debian': {
         "bifrost-base",  # tries to install 'mysql-server' which is not in
                          # Debian 'buster'
-        "cyborg-base",
         "elasticsearch6",   # Only required for CentOS 8 migration.
         "logstash6",        # Only required for CentOS 8 migration.
         "kibana6",          # Only required for CentOS 8 migration.
@@ -193,8 +190,8 @@ UNBUILDABLE_IMAGES = {
         "sensu-base",
         "telegraf",      # no binary package
     },
+
     'ubuntu': {
-        "cyborg-base",
         "elasticsearch6",   # Only required for CentOS 8 migration.
         "logstash6",        # Only required for CentOS 8 migration.
         "kibana6",          # Only required for CentOS 8 migration.

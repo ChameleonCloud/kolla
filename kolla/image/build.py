@@ -114,6 +114,7 @@ UNBUILDABLE_IMAGES = {
         "bifrost-base",
         "blazar-base",
         "cyborg-base",
+        "doni-base",
         "dragonflow-base",
         "freezer-base",
         "helm-repository",   # chart repository is gone

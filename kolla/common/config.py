@@ -361,6 +361,10 @@ SOURCES = {
         'type': 'url',
         'location': ('$tarballs_base/designate/'
                      'designate-9.0.2.tar.gz')},
+    'doni-base': {
+        'type': 'url',
+        'location': ('$tarballs_base/doni/'
+                     'doni-0.0.1.tar.gz')},
     'dragonflow-base': {
         'type': 'url',
         'location': ('$tarballs_base/dragonflow/'
@@ -1208,7 +1212,11 @@ USERS = {
     'letsencrypt-user': {
         'uid': 42486,
         'gid': 42486,
-    }
+    },
+    'doni-user': {
+        'uid': 42487,
+        'gid': 42487,
+    },
 }
 
 

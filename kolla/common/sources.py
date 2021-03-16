@@ -51,6 +51,10 @@ SOURCES = {
         'type': 'url',
         'location': ('$tarballs_base/openstack/designate/'
                      'designate-${openstack_branch}.tar.gz')},
+    'doni-base': {
+        'type': 'url',
+        'location': ('$tarballs_base/doni/'
+                     'doni-0.0.1.tar.gz')},
     'etcd': {
         # NOTE(wszumski): Upgrade one minor version at a time:
         # https://etcd.io/docs/v3.4/upgrades/upgrade_3_4/

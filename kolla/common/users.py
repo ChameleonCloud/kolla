@@ -341,5 +341,9 @@ USERS = {
     'opensearch-dashboards-user': {
         'uid': 42492,
         'gid': 42492,
+    },
+    'doni-user': {
+        'uid': 42590,
+        'gid': 42590,
     }
 }

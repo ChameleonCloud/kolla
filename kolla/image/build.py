@@ -88,6 +88,7 @@ UNBUILDABLE_IMAGES = {
         "bifrost-base",
         "blazar-base",
         "cyborg-base",
+        "doni-base",
         "freezer-base",
         "kuryr-base",
         "monasca-base",

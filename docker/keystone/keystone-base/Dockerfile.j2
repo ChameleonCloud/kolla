@@ -10,11 +10,11 @@ LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
 {% if install_type == 'binary' %}
     {% if base_package_type == 'rpm' %}
         {% set keystone_base_packages = [
+            'cjose',
             'hiredis',
             'httpd',
             'jansson-devel',
             'mod_auth_mellon',
-            'mod_auth_openidc',
             'mod_ssl',
             'openstack-keystone'
         ] %}
@@ -38,6 +38,8 @@ RUN dnf module enable mod_auth_openidc -y
 {% endif %}
 
 {{ macros.install_packages(keystone_base_packages | customizable("packages")) }}
+{% set mod_auth_openidc_releases = 'https://github.com/zmartzone/mod_auth_openidc/releases/download' %}
+RUN rpm -ih {{ mod_auth_openidc_releases}}/v2.4.4.1/mod_auth_openidc-2.4.4.1-1.el8.x86_64.rpm
 RUN sed -i -r 's,^(Listen 80),#\1,' /etc/httpd/conf/httpd.conf \
     && sed -i -r 's,^(Listen 443),#\1,' /etc/httpd/conf.d/ssl.conf
 
@@ -62,11 +64,11 @@ RUN mkdir -p /var/www/cgi-bin/keystone \
 {% elif install_type == 'source' %}
     {% if base_package_type == 'rpm' %}
         {% set keystone_base_packages = [
+            'cjose',
             'hiredis',
             'httpd',
             'jansson-devel',
             'mod_auth_mellon',
-            'mod_auth_openidc',
             'mod_ssl',
         ] %}
         {% if distro_python_version.startswith('3') %}
@@ -86,6 +88,8 @@ RUN dnf module enable mod_auth_openidc -y
 {% endif %}
 
 {{ macros.install_packages(keystone_base_packages | customizable("packages")) }}
+{% set mod_auth_openidc_releases = 'https://github.com/zmartzone/mod_auth_openidc/releases/download' %}
+RUN rpm -ih {{ mod_auth_openidc_releases}}/v2.4.4.1/mod_auth_openidc-2.4.4.1-1.el8.x86_64.rpm
 RUN sed -i -r 's,^(Listen 80),#\1,' /etc/httpd/conf/httpd.conf \
     && sed -i -r 's,^(Listen 443),#\1,' /etc/httpd/conf.d/ssl.conf
 

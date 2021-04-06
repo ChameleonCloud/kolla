@@ -105,8 +105,6 @@ UNBUILDABLE_IMAGES = {
 
     'source': {
         "helm-repository",   # chart repository is gone
-        "kuryr-libnetwork",  # Could not find a version that satisfies the
-                             # requirement jsonschema>=2.6.0,<3.0.0
         "tripleoclient",
     },
     'binary': {

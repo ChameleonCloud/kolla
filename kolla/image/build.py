@@ -675,6 +675,7 @@ class BuildTask(DockerTask):
                                         decode=True,
                                         network_mode=self.conf.network_mode,
                                         pull=pull,
+                                        platform=os.environ.get("DOCKER_DEFAULT_PLATFORM"),
                                         forcerm=self.forcerm,
                                         buildargs=buildargs):
                 if 'stream' in stream:

@@ -76,7 +76,6 @@ COPY yum.conf /etc/yum.conf
 
 {% if base_arch == 'x86_64' %}
     {% set base_yum_repo_files = [
-        'grafana.repo',
         'influxdb.repo',
         'rabbitmq_rabbitmq-server.repo',
         'td.repo',
@@ -111,7 +110,6 @@ COPY yum.conf /etc/yum.conf
     {% endif %}
 {% elif base_arch == 'aarch64' %}
     {% set base_yum_repo_files = [
-        'grafana.repo',
         'rabbitmq_rabbitmq-server.repo',
     ] %}
     # FIXME(mgoddard): Not available for CentOS 8 yet.

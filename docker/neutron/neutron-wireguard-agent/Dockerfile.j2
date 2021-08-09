@@ -11,6 +11,8 @@ LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
       'elrepo-release',
     ] %}
 
+RUN rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+
     {{ macros.install_packages(neutron_wireguard_agent_centos_yum_repo_packages | customizable("centos_yum_repo_packages")) }}
 
     {% set neutron_wireguard_agent_packages = [

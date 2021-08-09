@@ -11,7 +11,8 @@ LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
       'elrepo-release',
     ] %}
 
-RUN rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+# Re-enable epel for wireguard-tools
+RUN dnf config-manager --enable epel
 
     {{ macros.install_packages(neutron_wireguard_agent_centos_yum_repo_packages | customizable("centos_yum_repo_packages")) }}
 

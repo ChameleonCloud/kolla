@@ -5,6 +5,10 @@ LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
 
 {% import "macros.j2" as macros with context %}
 
+{% set mod_auth_openidc_releases = 'https://github.com/zmartzone/mod_auth_openidc/releases/download' %}
+{% set mod_auth_openidc_rpm_url = mod_auth_openidc_releases + "/v2.4.4.1/mod_auth_openidc-2.4.4.1-1.el8.x86_64.rpm" %}
+{% set mod_auth_openidc_deb_url = mod_auth_openidc_releases + "/v2.4.4.1/libapache2-mod-auth-openidc_2.4.4.1-1.bionic+1_amd64.deb" %}
+
 {{ macros.configure_user(name='keystone') }}
 
 {% if install_type == 'binary' %}
@@ -15,6 +19,7 @@ LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
             'httpd',
             'jansson-devel',
             'mod_auth_mellon',
+            mod_auth_openidc_rpm_url,
             'mod_ssl',
             'openstack-keystone'
         ] %}
@@ -38,8 +43,6 @@ RUN dnf module enable mod_auth_openidc -y
 {% endif %}
 
 {{ macros.install_packages(keystone_base_packages | customizable("packages")) }}
-{% set mod_auth_openidc_releases = 'https://github.com/zmartzone/mod_auth_openidc/releases/download' %}
-RUN rpm -ih {{ mod_auth_openidc_releases}}/v2.4.4.1/mod_auth_openidc-2.4.4.1-1.el8.x86_64.rpm
 RUN sed -i -r 's,^(Listen 80),#\1,' /etc/httpd/conf/httpd.conf \
     && sed -i -r 's,^(Listen 443),#\1,' /etc/httpd/conf.d/ssl.conf
 
@@ -48,12 +51,16 @@ RUN sed -i -r 's,^(Listen 80),#\1,' /etc/httpd/conf/httpd.conf \
             'apache2',
             'keystone',
             'libapache2-mod-auth-mellon',
-            'libapache2-mod-auth-openidc',
+            mod_auth_openidc_deb_url,
+            'libcjose0',
+            'libhiredis0.13',
+            'libjansson4',
             'libapache2-mod-wsgi-py3',
             'python3-ldappool'
         ] %}
 
 {{ macros.install_packages(keystone_base_packages | customizable("packages")) }}
+RUN a2enmod auth_openidc
 RUN mkdir -p /var/www/cgi-bin/keystone \
     && cp -a /usr/bin/keystone-wsgi-public /var/www/cgi-bin/keystone/main \
     && cp -a /usr/bin/keystone-wsgi-admin /var/www/cgi-bin/keystone/admin \
@@ -69,6 +76,7 @@ RUN mkdir -p /var/www/cgi-bin/keystone \
             'httpd',
             'jansson-devel',
             'mod_auth_mellon',
+            mod_auth_openidc_rpm_url,
             'mod_ssl',
         ] %}
         {% if distro_python_version.startswith('3') %}
@@ -88,8 +96,6 @@ RUN dnf module enable mod_auth_openidc -y
 {% endif %}
 
 {{ macros.install_packages(keystone_base_packages | customizable("packages")) }}
-{% set mod_auth_openidc_releases = 'https://github.com/zmartzone/mod_auth_openidc/releases/download' %}
-RUN rpm -ih {{ mod_auth_openidc_releases}}/v2.4.4.1/mod_auth_openidc-2.4.4.1-1.el8.x86_64.rpm
 RUN sed -i -r 's,^(Listen 80),#\1,' /etc/httpd/conf/httpd.conf \
     && sed -i -r 's,^(Listen 443),#\1,' /etc/httpd/conf.d/ssl.conf
 
@@ -97,11 +103,15 @@ RUN sed -i -r 's,^(Listen 80),#\1,' /etc/httpd/conf/httpd.conf \
         {% set keystone_base_packages = [
             'apache2',
             'libapache2-mod-auth-mellon',
-            'libapache2-mod-auth-openidc',
+            mod_auth_openidc_deb_url,
+            'libcjose0',
+            'libhiredis0.13',
+            'libjansson4',
             'libapache2-mod-wsgi-py3',
             'python3-ldappool'
         ] %}
 {{ macros.install_packages(keystone_base_packages | customizable("packages")) }}
+RUN a2enmod auth_openidc
 RUN echo > /etc/apache2/ports.conf
 
     {% endif %}

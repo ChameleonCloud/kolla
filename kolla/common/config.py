@@ -785,6 +785,10 @@ SOURCES = {
         'type': 'url',
         'location': ('$tarballs_base/zaqar-tempest-plugin/'
                      'zaqar_tempest_plugin-0.3.0.tar.gz')},
+    'tunelo-base': {
+        'type': 'url',
+        'location': ('$tarballs_base/tunelo/'
+                     'tunelo-0.0.1.tar.gz')},
     'rally': {
         'type': 'url',
         'location': ('$tarballs_base/rally/'
@@ -1219,6 +1223,10 @@ USERS = {
         'uid': 42487,
         'gid': 42487,
     },
+    'tunelo-user': {
+        'uid': 42488,
+        'gid': 42488,
+    }
 }
 
 

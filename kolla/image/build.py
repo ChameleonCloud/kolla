@@ -124,6 +124,7 @@ UNBUILDABLE_IMAGES = {
         "qinling-base",
         "searchlight-base",
         "solum-base",
+        "tunelo-base",
         "vmtp",
         "zun-base",
     },

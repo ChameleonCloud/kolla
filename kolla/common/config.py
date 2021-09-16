@@ -631,6 +631,10 @@ SOURCES = {
         'type': 'url',
         'location': ('$tarballs_base/openstack/trove/'
                      'trove-${openstack_branch}.tar.gz')},
+    'tunelo-base': {
+        'type': 'url',
+        'location': ('$tarballs_base/tunelo/'
+                     'tunelo-0.0.1.tar.gz')},
     'vitrage-base': {
         'type': 'url',
         'location': ('$tarballs_base/openstack/vitrage/'
@@ -970,6 +974,10 @@ USERS = {
         'uid': 42490,
         'gid': 42490,
     },
+    'tunelo-user': {
+        'uid': 42491,
+        'gid': 42491,
+    }
 }
 
 

@@ -468,7 +468,7 @@ class BuildTask(DockerTask):
         # Set a special hacky PARENT_TAG arg if the parent is not being built,
         # to allow using one tag in the unbuilt parent tree, and another in the
         # final image.
-        if (image.parent is not None and image.parent.status == STATUS_SKIPPED):
+        if (image.parent is not None and image.parent.status == Status.SKIPPED):
             buildargs['PARENT_TAG'] = self.conf.parent_tag
 
         if not buildargs:

@@ -182,7 +182,9 @@ RUN if [[ -e /etc/yum.repos.d/rabbitmq_rabbitmq-server.repo ]]; then \
     'glibc-all-langpacks'
 ] %}
 
-RUN {{ macros.install_packages(base_centos_language_packages | customizable("centos_language_packages"), chain=True, clean=False) }} \
+RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-* && \
+sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.epel.cloud|g' /etc/yum.repos.d/CentOS-Linux-* && \
+{{ macros.install_packages(base_centos_language_packages | customizable("centos_language_packages"), chain=True, clean=False) }} \
     && {{ macros.rpm_security_update(clean_package_cache) }}
 
 {% endif %}
@@ -223,25 +225,15 @@ RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
 {% endblock %}
 
 {% set base_centos_yum_repo_keys = [
-    '/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-Cloud',
-    '/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-OpsTools',
-    '/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-Storage',
 ] %}
 
 {% set base_centos_yum_repo_packages = [
-    'centos-release-nfs-ganesha28',
-    'centos-release-openstack-train',
-    'centos-release-opstools',
-    'epel-release',
 ] %}
 
 {% set base_centos_yum_repos_to_disable = [
 ] %}
 
 {% if distro_package_manager == 'dnf' %}
-    {% set base_centos_yum_repo_keys = base_centos_yum_repo_keys + [
-        '/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-Virtualization-RDO',
-    ] %}
     # We need 'dnf-plugins-core' for 'dnf config-manager'
     {% set base_centos_yum_repo_packages = base_centos_yum_repo_packages + [
         'dnf-plugins-core'
@@ -249,13 +241,6 @@ RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
     {% set base_centos_yum_repos_to_enable = [
         'ha',
         'powertools'
-    ] %}
-    # NOTE(yoctozepto): use upstream rabbitmq (3.7) and erlang on CentOS 8
-    # see https://launchpad.net/bugs/1884034
-    {% set base_centos_yum_repos_to_disable = [
-        'centos-rabbitmq-38',
-        'epel',
-        'epel-modular',
     ] %}
 {% else %}
     {% set base_centos_yum_repo_keys = base_centos_yum_repo_keys + [
@@ -267,7 +252,6 @@ RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
         'yum-plugin-priorities',
     ] %}
 {% endif %}
-
 
 RUN {{ macros.install_packages(base_centos_yum_repo_packages | customizable("centos_yum_repo_packages"), chain=True, clean=False) }} \
 {%- for repo in base_centos_yum_repos_to_enable | customizable('centos_yum_repos_to_enable') %}

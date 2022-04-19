@@ -14,6 +14,7 @@ LABEL maintainer="{{ maintainer }}" name="{{ image_name }}" build-date="{{ build
         'ceph-common',
         'glusterfs-fuse',
         'sqlite',
+        'dbus'
     ] %}
 {% elif base_package_type == 'deb' %}
     {% set manila_share_packages = [
@@ -22,7 +23,8 @@ LABEL maintainer="{{ maintainer }}" name="{{ image_name }}" build-date="{{ build
         'python3-cephfs',
         'python3-rados',
         'python3-rbd',
-        'sqlite3'
+        'sqlite3',
+        'dbus'
     ] %}
 
 {% endif %}

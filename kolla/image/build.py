@@ -622,9 +622,26 @@ class BuildTask(DockerTask):
                                           items_path, e)
                         image.status = STATUS_CONNECTION_ERROR
                         raise ArchivingError
+
             arc_path = os.path.join(image.path, '%s-archive' % arcname)
+
+            # NOTE(mgoddard): Change ownership of files to root:root. This
+            # avoids an issue introduced by the fix for git CVE-2022-24765,
+            # which breaks PBR when the source checkout is not owned by the
+            # user installing it. LP#1969096
+            # NOTE(diurnalist): This will klobber any parts of the archive that
+            # were not sourced from Git, but did have perms that mattered in some
+            # way. By the time this filter runs, it actually will have already run
+            # once when creating the archives for the `items` list, but, .extractall
+            # will silently disregard any changes to uid or gid made in that step
+            # if run by a non-root user. So, we have to do it again ;_;
+            def reset_userinfo(tarinfo):
+                tarinfo.uid = tarinfo.gid = 0
+                tarinfo.uname = tarinfo.gname = "root"
+                return tarinfo
+
             with tarfile.open(arc_path, 'w') as tar:
-                tar.add(items_path, arcname=arcname)
+                tar.add(items_path, arcname=arcname, filter=reset_userinfo)
             return len(os.listdir(items_path))
 
         self.logger.debug('Processing')

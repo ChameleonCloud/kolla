@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/bash 
 
 # Update HAProxy with new certs via its API
 

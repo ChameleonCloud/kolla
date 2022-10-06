@@ -10,7 +10,7 @@ if [[ -d "$le_base" ]]; then
         # Start a transaction to update the certificate
         echo -e "set ssl cert $cert_path <<\n$(cat $le_base/$domain/fullchain.pem $le_base/$domain/privkey.pem | sed '/^[[:blank:]]*$/ d')\n" | socat /var/lib/kolla/haproxy/haproxy.sock -
         # Commit the transaction
-        echo -e "commit ssl cert $cert_path" | socat /var/lib/kolla/haproxy/haproxy.sock -
+        echo "commit ssl cert $cert_path" | socat /var/lib/kolla/haproxy/haproxy.sock -
     done
 fi
 

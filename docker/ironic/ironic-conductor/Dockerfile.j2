@@ -52,6 +52,7 @@ LABEL maintainer="{{ maintainer }}" name="{{ image_name }}" build-date="{{ build
 {% set ironic_conductor_pip_packages = [
     '-r /ironic/driver-requirements.txt',
     'ironic-staging-drivers',
+    'ironic-prometheus-exporter',
 ] %}
 
 {% set ironic_conductor_plugins_pip_packages = [

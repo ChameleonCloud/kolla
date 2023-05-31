@@ -23,7 +23,8 @@ LABEL fluentd_version="0.14" fluentd_binary="td-agent"
 
     {% set fluentd_packages = [
         'gcc-c++',
-        'make'
+        'make',
+        'td-agent-4.4.2',
     ] %}
 
     {% if base_arch in ['aarch64', 'x86_64'] %}

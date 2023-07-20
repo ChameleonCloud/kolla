@@ -365,17 +365,34 @@ class BuildTask(EngineTask):
         pull = self.conf.pull if image.parent is None else False
 
         buildargs = self.update_buildargs()
+
+        kwargs = {}
+        if self.conf.engine == engine.Engine.PODMAN.value:
+            # TODO(kevko): dockerfile path is a workaround,
+            # should be removed as soon as it will be fixed in podman-py
+            # https://github.com/containers/podman-py/issues/177
+            kwargs["dockerfile"] = image.path + '/Dockerfile'
+            # Podman squash is different by default
+            # https://github.com/containers/buildah/issues/1234
+            if self.conf.squash:
+                kwargs["squash"] = False
+                kwargs["layers"] = False
+            else:
+                kwargs["layers"] = True
         try:
-            for stream in \
-                self.engine_client.build(path=image.path,
-                                         tag=image.canonical_name,
-                                         nocache=not self.conf.cache,
-                                         rm=True,
-                                         decode=True,
-                                         network_mode=self.conf.network_mode,
-                                         pull=pull,
-                                         forcerm=self.forcerm,
-                                         buildargs=buildargs):
+            for stream in self.engine_client.images.build(
+                    path=image.path,
+                    tag=image.canonical_name,
+                    nocache=not self.conf.cache,
+                    rm=True,
+                    network_mode=self.conf.network_mode,
+                    pull=pull,
+                    forcerm=self.forcerm,
+                    platform=self.conf.platform,
+                    buildargs=buildargs,
+                    **kwargs)[1]:
+                if self.conf.engine == engine.Engine.PODMAN.value:
+                    stream = json.loads(stream)
                 if 'stream' in stream:
                     for line in stream['stream'].split('\n'):
                         if line:

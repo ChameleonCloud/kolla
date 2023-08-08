@@ -588,24 +588,25 @@ class BuildTask(DockerTask):
 
         buildargs = self.update_buildargs(image)
 
+        # We'll use the prepared build context later, but don't build now.
+        if self.conf.buildx:
+            image.status = Status.BUILT
+            return
+
         buildx_kwargs = {}
         if pull: buildx_kwargs.update({"pull":pull})
         if buildargs: buildx_kwargs.update({"build_args":buildargs})
         if self.conf.platform: buildx_kwargs.update({"platforms":[self.conf.platform]})
 
         try:
-            # buildx_image = self.dc.build(context_path=image.path,
-            #                             tags=[image.canonical_name],
-            #                             cache=self.conf.cache,
-            #                             network="host",
-            #                             load=True,
-            #                             **buildx_kwargs
-            #                             )
+            buildx_image = self.dc.build(context_path=image.path,
+                                        tags=[image.canonical_name],
+                                        cache=self.conf.cache,
+                                        network="host",
+                                        load=True,
+                                        **buildx_kwargs
+                                        )
 
-            # if image.status != Status.ERROR and self.conf.squash:
-            #     self.squash()
-            self.bake()
-            pass
 
         except DockerException:
             image.status = Status.ERROR
@@ -618,23 +619,6 @@ class BuildTask(DockerTask):
             now = datetime.datetime.now()
             self.logger.info('Built at %s (took %s)' %
                              (now, now - image.start))
-
-    def bake(self):
-        env = jinja2.Environment(  # nosec: not used to render HTML
-                loader=jinja2.FileSystemLoader("/opt/build_kolla_images/kolla/"))
-        template = env.get_template("docker-bake.hcl.j2")
-
-        entry = template.render(
-            name = self.image.name,
-            tags = self.image.canonical_name,
-            build_context = self.image.path,
-            parent_name = self.image.parent_name
-        )
-
-        with open("/tmp/kolla-tmpdir/bakefile.hcl", mode="a+") as f:
-            f.write(entry)
-
-
 
     def squash(self):
         image_tag = self.image.canonical_name
@@ -1408,21 +1392,6 @@ class KollaWorker(object):
                     parent.children.append(image)
                     image.parent = parent
 
-    def add_to_bakefile(self, image):
-        env = jinja2.Environment(  # nosec: not used to render HTML
-            loader=jinja2.FileSystemLoader("/opt/build_kolla_images/kolla/"))
-        template = env.get_template("docker-bake.hcl.j2")
-
-        entry = template.render(
-            name = image.name,
-            tags = [image.canonical_name],
-            build_context = image.path,
-            parent_name = image.parent_name
-        )
-
-        with open("/tmp/kolla-tmpdir/bakefile.hcl", mode="a+") as f:
-            f.write(entry)
-
     def build_queue(self, push_queue):
         """Organizes Queue list.
 
@@ -1445,6 +1414,22 @@ class KollaWorker(object):
                 LOG.info('Added image %s to queue', image.name)
 
         return build_queue
+
+def generate_bakefile(images):
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader("/scratch/kolla/bakefile_templates"))
+    template = env.get_template("docker-bake.hcl.j2")
+
+    targets_dict = {}
+    for img in images:
+        targets_dict[img.name] = {
+            "canonical_name": img.canonical_name,
+            "build_context": img.path,
+            "parent_name": img.parent_name
+        }
+    bakefile = template.render(targets=targets_dict)
+
+    with open("/tmp/bakefile.hcl", mode="w+") as f:
+            f.write(bakefile)
 
 
 def run_build():
@@ -1479,9 +1464,11 @@ def run_build():
                 continue
 
             shutil.rmtree(image.path)
-
         LOG.info('Dockerfiles are generated in %s', kolla.working_dir)
         return
+
+    if conf.buildx:
+        generate_bakefile([i for i in kolla.images if i.status == Status.MATCHED])
 
     # We set the atime and mtime to 0 epoch to preserve allow the Docker cache
     # to work like we want. A different size or hash will still force a rebuild

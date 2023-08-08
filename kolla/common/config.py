@@ -224,6 +224,8 @@ _CLI_OPTS = [
                'A really hacky thing that only Chameleon uses.')),
     cfg.BoolOpt('template-only', default=False,
                 help="Don't build images. Generate Dockerfile only"),
+    cfg.BoolOpt('buildx', default=False,
+                help="use buildx to build with context and bakefile"),
     cfg.IntOpt('timeout', default=120,
                help='Time in seconds after which any operation times out'),
     cfg.MultiOpt('template-override', types.String(),

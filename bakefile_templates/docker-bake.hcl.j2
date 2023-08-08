@@ -1,0 +1,11 @@
+{% for target, data in targets.items() -%}
+target "{{ target }}" {
+  tags = ["{{ data.canonical_name }}"]
+  context = "{{ data.build_context }}"
+  {% if target != "base" %}
+  contexts = {
+    baseapp = "target:{{ data.parent_name }}"
+  }
+  {% endif %}
+}
+{% endfor %}

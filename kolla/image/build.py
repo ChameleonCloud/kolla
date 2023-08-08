@@ -20,22 +20,22 @@ import logging
 import os
 import queue
 import re
-import requests
 import shutil
 import sys
 import tarfile
 import tempfile
 import threading
 import time
-
 from distutils.version import StrictVersion
-import docker
 from enum import Enum
+
 import git
 import jinja2
+import requests
 from oslo_config import cfg
+from python_on_whales import DockerClient
+from python_on_whales.exceptions import DockerException
 from requests import exceptions as requests_exc
-
 
 # NOTE(SamYaple): Update the search path to prefer PROJECT_ROOT as the source
 #                 of packages to import if we are using local tools instead of
@@ -45,13 +45,13 @@ PROJECT_ROOT = os.path.abspath(os.path.join(
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from kolla import exception  # noqa
+from kolla import version  # noqa
 from kolla.common import config as common_config  # noqa
 from kolla.common import task  # noqa
 from kolla.common import utils  # noqa
-from kolla import exception  # noqa
 from kolla.template import filters as jinja_filters  # noqa
 from kolla.template import methods as jinja_methods  # noqa
-from kolla import version  # noqa
 
 
 class Status(Enum):
@@ -195,8 +195,6 @@ def join_many(threads):
 
 class DockerTask(task.Task):
 
-    docker_kwargs = docker.utils.kwargs_from_env()
-
     def __init__(self):
         super(DockerTask, self).__init__()
         self._dc = None
@@ -205,8 +203,7 @@ class DockerTask(task.Task):
     def dc(self):
         if self._dc is not None:
             return self._dc
-        docker_kwargs = self.docker_kwargs.copy()
-        self._dc = docker.APIClient(version='auto', **docker_kwargs)
+        self._dc = DockerClient()
         return self._dc
 
 
@@ -591,32 +588,26 @@ class BuildTask(DockerTask):
 
         buildargs = self.update_buildargs(image)
 
-        try:
-            for stream in self.dc.build(path=image.path,
-                                        tag=image.canonical_name,
-                                        nocache=not self.conf.cache,
-                                        rm=True,
-                                        decode=True,
-                                        network_mode=self.conf.network_mode,
-                                        pull=pull,
-                                        forcerm=self.forcerm,
-                                        buildargs=buildargs,
-                                        platform=self.conf.platform):
-                if 'stream' in stream:
-                    for line in stream['stream'].split('\n'):
-                        if line:
-                            self.logger.info('%s', line)
-                if 'errorDetail' in stream:
-                    image.status = Status.ERROR
-                    self.logger.error('Error\'d with the following message')
-                    for line in stream['errorDetail']['message'].split('\n'):
-                        if line:
-                            self.logger.error('%s', line)
-                    return
+        buildx_kwargs = {}
+        if pull: buildx_kwargs.update({"pull":pull})
+        if buildargs: buildx_kwargs.update({"build_args":buildargs})
+        if self.conf.platform: buildx_kwargs.update({"platforms":[self.conf.platform]})
 
-            if image.status != Status.ERROR and self.conf.squash:
-                self.squash()
-        except docker.errors.DockerException:
+        try:
+            # buildx_image = self.dc.build(context_path=image.path,
+            #                             tags=[image.canonical_name],
+            #                             cache=self.conf.cache,
+            #                             network="host",
+            #                             load=True,
+            #                             **buildx_kwargs
+            #                             )
+
+            # if image.status != Status.ERROR and self.conf.squash:
+            #     self.squash()
+            self.bake()
+            pass
+
+        except DockerException:
             image.status = Status.ERROR
             self.logger.exception('Unknown docker error when building')
         except Exception:
@@ -627,6 +618,23 @@ class BuildTask(DockerTask):
             now = datetime.datetime.now()
             self.logger.info('Built at %s (took %s)' %
                              (now, now - image.start))
+
+    def bake(self):
+        env = jinja2.Environment(  # nosec: not used to render HTML
+                loader=jinja2.FileSystemLoader("/opt/build_kolla_images/kolla/"))
+        template = env.get_template("docker-bake.hcl.j2")
+
+        entry = template.render(
+            name = self.image.name,
+            tags = self.image.canonical_name,
+            build_context = self.image.path,
+            parent_name = self.image.parent_name
+        )
+
+        with open("/tmp/kolla-tmpdir/bakefile.hcl", mode="a+") as f:
+            f.write(entry)
+
+
 
     def squash(self):
         image_tag = self.image.canonical_name
@@ -766,10 +774,9 @@ class KollaWorker(object):
         self.maintainer = conf.maintainer
         self.distro_python_version = conf.distro_python_version
 
-        docker_kwargs = docker.utils.kwargs_from_env()
         try:
-            self.dc = docker.APIClient(version='auto', **docker_kwargs)
-        except docker.errors.DockerException as e:
+            self.dc = DockerClient()
+        except DockerException as e:
             self.dc = None
             if not (conf.template_only or
                     conf.save_dependency or
@@ -1400,6 +1407,21 @@ class KollaWorker(object):
                         parent_name.replace(self.install_type, 'infra')):
                     parent.children.append(image)
                     image.parent = parent
+
+    def add_to_bakefile(self, image):
+        env = jinja2.Environment(  # nosec: not used to render HTML
+            loader=jinja2.FileSystemLoader("/opt/build_kolla_images/kolla/"))
+        template = env.get_template("docker-bake.hcl.j2")
+
+        entry = template.render(
+            name = image.name,
+            tags = [image.canonical_name],
+            build_context = image.path,
+            parent_name = image.parent_name
+        )
+
+        with open("/tmp/kolla-tmpdir/bakefile.hcl", mode="a+") as f:
+            f.write(entry)
 
     def build_queue(self, push_queue):
         """Organizes Queue list.

@@ -287,8 +287,15 @@ class BuildTask(EngineTask):
             if archives:
                 for archive in archives:
                     _test_malicious_tarball(archive, items_path)
+                    # tarfile.extractall fails to overwrite readonly files
                     with tarfile.open(archive, 'r') as archive_tar:
-                        archive_tar.extractall(path=items_path)  # nosec
+                        for file_ in archive_tar:
+                            try:
+                                archive_tar.extract(file_, path=items_path)
+                            except IOError as e:
+                                 file_path = os.path.join(items_path, file_.name)
+                                 os.remove(file_path)
+                                 archive_tar.extract(file_, path=items_path)
             else:
                 try:
                     os.mkdir(items_path)

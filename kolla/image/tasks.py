@@ -417,6 +417,8 @@ class BuildTask(EngineTask):
                     **kwargs)[1]:
                 if self.conf.engine == engine.Engine.PODMAN.value:
                     stream = json.loads(stream)
+                if self.conf.engine == engine.Engine.BUILDX.value:
+                    stream = {"stream": stream}
                 if 'stream' in stream:
                     for line in stream['stream'].split('\n'):
                         if line:

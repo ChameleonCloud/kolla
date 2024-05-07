@@ -105,6 +105,7 @@ def run_build():
         LOG.setLevel(logging.DEBUG)
 
     if conf.engine not in (engine.Engine.DOCKER.value,
+                           engine.Engine.BUILDX.value,
                            engine.Engine.PODMAN.value):
         LOG.error(f'Unsupported engine name "{conf.engine}", exiting.')
         sys.exit(1)

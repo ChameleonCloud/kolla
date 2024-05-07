@@ -134,6 +134,8 @@ _PROFILE_OPTS = [
 hostarch = os.uname()[4]
 if hostarch == 'aarch64':
     debianarch = 'arm64'
+elif hostarch == 'arm64':
+    debianarch = 'arm64'
 elif hostarch == 'x86_64':
     debianarch = 'amd64'
 

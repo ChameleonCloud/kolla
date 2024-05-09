@@ -391,6 +391,23 @@ class BuildTask(EngineTask):
         buildargs = self.update_buildargs()
 
         kwargs = {}
+
+        def _get_image_cache_ref(canonical_name):
+            name_and_tag = str.rsplit(canonical_name, ":", maxsplit=1)
+            image_cache_ref = f"{name_and_tag[0]}:cache-{name_and_tag[1]}"
+            return image_cache_ref
+
+        kwargs = {}
+        if self.conf.engine == engine.Engine.BUILDX.value:
+            image_cache_ref = _get_image_cache_ref(image.canonical_name)
+
+            # cache to an image in same repo, but with tag "cache-$TAG"
+            kwargs["cache_to"] = {"type":"registry", "mode":"max", "ref": image_cache_ref}
+            kwargs["cache_from"] = [{"type":"registry", "ref": image_cache_ref}]
+
+            # if we don't push to local registry, FROM commands will fail
+            kwargs["push"]=True
+
         if self.conf.engine == engine.Engine.PODMAN.value:
             # TODO(kevko): dockerfile path is a workaround,
             # should be removed as soon as it will be fixed in podman-py

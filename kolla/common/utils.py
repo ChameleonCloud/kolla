@@ -85,3 +85,14 @@ def squash(old_image, new_image,
         LOG.exception('Get error during squashing image: %s',
                       ex.output)
         raise
+
+def set_time(path, source_date_epoch=0, set_root=False):
+        times = (source_date_epoch,source_date_epoch)
+        for root, dirs, files in os.walk(path):
+            for file_ in files:
+                os.utime(os.path.join(root, file_), times=times)
+            for dir_ in dirs:
+                os.utime(os.path.join(root, dir_), times=times)
+            if set_root:
+                os.utime(root, times=times)
+        LOG.debug(f"Set atime and mtime to {source_date_epoch} for all content in {path}")

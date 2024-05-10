@@ -392,16 +392,8 @@ class BuildTask(EngineTask):
 
         buildargs = self.update_buildargs()
 
-        def _set_time(image_path, source_date_epoch=0):
-            for root, dirs, files in os.walk(image_path):
-                for file_ in files:
-                    os.utime(os.path.join(root, file_), (source_date_epoch, source_date_epoch))
-                for dir_ in dirs:
-                    os.utime(os.path.join(root, dir_), (source_date_epoch, source_date_epoch))
-                os.utime(root, (source_date_epoch, source_date_epoch))
-            self.logger.debug(f"Set atime and mtime to {source_date_epoch} for all content in working dir")
-        
-        _set_time(image_path = image.path, source_date_epoch=self.conf.source_date_epoch)
+        # set mtime again, additions and plugins archives will have modified it after initial templating
+        utils.set_time(image.path, source_date_epoch=self.conf.source_date_epoch, set_root=True)
 
         kwargs = {}
 

@@ -149,7 +149,7 @@ def run_build():
 
     # We set the atime and mtime to 0 epoch to preserve allow the Docker cache
     # to work like we want. A different size or hash will still force a rebuild
-    kolla.set_time(conf.source_date_epoch)
+    utils.set_time(kolla.working_dir, conf.source_date_epoch)
 
     if conf.template_only:
         for image in kolla.images:

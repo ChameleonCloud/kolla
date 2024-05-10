@@ -18,6 +18,8 @@ import os
 import shutil
 import tarfile
 
+from pathlib import Path
+
 try:
     import docker.errors
 except (ImportError, ModuleNotFoundError):
@@ -171,12 +173,29 @@ class BuildTask(EngineTask):
                 followups.append(BuildTask(self.conf, image, self.push_queue))
         return followups
 
+
     def process_source(self, image, source):
         if not source['enabled']:
             self.logger.debug("Skipping disabled source %s", source['name'])
             return
 
         dest_archive = os.path.join(image.path, source['name'] + '-archive')
+
+
+
+        # NOTE(shermanm): Change mtime of git cloned files to source_date_epoch
+        # If not done, mtime will be set to the time `git clone` is executed,
+        # breaking docker layer caching
+        def _reset_git_mtime(self, path):
+            repo = git.Repo(path)
+            for n in repo.tree().list_traverse():
+                filepath = Path(repo.working_dir) / n.path
+                timestamp = self.conf.source_date_epoch
+                if not timestamp.isnumeric():
+                    raise ValueError(
+                        f"git log gave non-numeric timestamp {timestamp} for {n.path}"
+                    )
+                os.utime(filepath, times=(int(timestamp), int(timestamp)))
 
         # NOTE(mgoddard): Change ownership of files to root:root. This
         # avoids an issue introduced by the fix for git CVE-2022-24765,
@@ -232,7 +251,9 @@ class BuildTask(EngineTask):
                 self.logger.debug("Cloning from %s", source['source'])
                 git.Git().clone(source['source'], clone_dir)
                 git.Git(clone_dir).checkout(source['reference'])
+
                 reference_sha = git.Git(clone_dir).rev_parse('HEAD')
+                self._reset_git_mtime(clone_dir)
                 self.logger.debug("Git checkout by reference %s (%s)",
                                   source['reference'], reference_sha)
             except Exception as e:

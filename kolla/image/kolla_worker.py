@@ -253,13 +253,14 @@ class KollaWorker(object):
         self.copy_apt_files()
         LOG.debug('Created working dir: %s', self.working_dir)
 
-    def set_time(self):
+    def set_time(self, source_date_epoch=0):
+        times = (source_date_epoch,source_date_epoch)
         for root, dirs, files in os.walk(self.working_dir):
             for file_ in files:
-                os.utime(os.path.join(root, file_), (0, 0))
+                os.utime(os.path.join(root, file_), times=times)
             for dir_ in dirs:
-                os.utime(os.path.join(root, dir_), (0, 0))
-        LOG.debug('Set atime and mtime to 0 for all content in working dir')
+                os.utime(os.path.join(root, dir_), times=times)
+        LOG.debug(f"Set atime and mtime to {source_date_epoch} for all content in working dir")
 
     def _get_filters(self):
         filters = {
@@ -302,7 +303,7 @@ class KollaWorker(object):
         for path in self.docker_build_paths:
             template_name = "Dockerfile.j2"
             image_name = path.split("/")[-1]
-            ts = time.time()
+            ts = self.conf.source_date_epoch
             build_date = datetime.datetime.fromtimestamp(ts).strftime(
                 '%Y%m%d')
             values = {'base_distro': self.base,

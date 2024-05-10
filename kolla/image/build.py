@@ -147,6 +147,10 @@ def run_build():
     kolla.find_parents()
     kolla.filter_images()
 
+    # We set the atime and mtime to 0 epoch to preserve allow the Docker cache
+    # to work like we want. A different size or hash will still force a rebuild
+    kolla.set_time(conf.source_date_epoch)
+
     if conf.template_only:
         for image in kolla.images:
             if image.status == Status.MATCHED:
@@ -156,10 +160,6 @@ def run_build():
 
         LOG.info('Dockerfiles are generated in %s', kolla.working_dir)
         return
-
-    # We set the atime and mtime to 0 epoch to preserve allow the Docker cache
-    # to work like we want. A different size or hash will still force a rebuild
-    kolla.set_time()
 
     if conf.save_dependency:
         kolla.save_dependency(conf.save_dependency)

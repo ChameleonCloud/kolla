@@ -267,7 +267,8 @@ _CLI_OPTS = [
     cfg.StrOpt('engine', default='docker', choices=['docker', 'buildx', 'podman'],
                help='Container engine to build images on.'),
     cfg.StrOpt('podman_base_url', default='unix:///run/podman/podman.sock',
-               help='Path to podman socket.')
+               help='Path to podman socket.'),
+    cfg.IntOpt('source_date_epoch', default=0, help='unix timestamp for all build files')
 ]
 
 _BASE_OPTS = [

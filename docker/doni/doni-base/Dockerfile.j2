@@ -7,16 +7,8 @@ LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
 
 {{ macros.configure_user(name='doni') }}
 
-{% if install_type == 'binary' %}
-    {% if base_package_type == 'rpm' %}
-        {% set doni_base_packages = ['openstack-doni-common'] %}
-    {% elif base_package_type == 'deb' %}
-        {% set doni_base_packages = ['doni-common'] %}
-    {% endif %}
-
+{% set doni_base_packages = [] %}
 {{ macros.install_packages(doni_base_packages | customizable("packages")) }}
-
-{% elif install_type == 'source' %}
 
 ADD doni-base-archive /doni-base-source
 
@@ -35,12 +27,9 @@ ADD doni_sudoers /etc/sudoers.d/kolla_doni_sudoers
 RUN chmod 750 /etc/sudoers.d \
     && chmod 440 /etc/sudoers.d/kolla_doni_sudoers
 
-{% endif %}
-
 COPY extend_start.sh /usr/local/bin/kolla_extend_start
 
 RUN touch /usr/local/bin/kolla_doni_extend_start \
     && chmod 755 /usr/local/bin/kolla_extend_start /usr/local/bin/kolla_doni_extend_start \
-    && chown -R doni: /etc/doni
 
 {% block doni_base_footer %}{% endblock %}

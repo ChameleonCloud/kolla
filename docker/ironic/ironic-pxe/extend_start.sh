@@ -44,6 +44,12 @@ function prepare_ipxe {
     # named differently to allow the original names to be used in ironic.conf.
     if [[ "${KOLLA_BASE_DISTRO}" =~ debian|ubuntu ]]; then
         cp /usr/lib/ipxe/{undionly.kpxe,ipxe.efi,snponly.efi} ${TFTPBOOT_PATH}/
+
+        # copy aarch64 binaries if we loaded them into the container during build
+        if [ -d "/usr/lib/ipxe/aarch64/" ]; then
+            mkdir -p ${TFTPBOOT_PATH}/aarch64/ \
+            && cp /usr/lib/ipxe/aarch64/{ipxe.efi,snponly.efi} ${TFTPBOOT_PATH}/aarch64/
+        fi
     elif [[ "${KOLLA_BASE_DISTRO}" =~ centos|rocky ]]; then
         cp /usr/share/ipxe/{undionly.kpxe,ipxe*.efi} ${TFTPBOOT_PATH}/
         if [[ ! -e ${TFTPBOOT_PATH}/ipxe.efi ]]; then

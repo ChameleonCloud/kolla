@@ -389,11 +389,20 @@ class BuildTask(EngineTask):
         if self.conf.engine == engine.Engine.WHALES.value:
             kwargs["context_path"] = image.path
             kwargs["tags"] = [image.canonical_name]
-            kwargs["cache"] = self.conf.cache
             kwargs["pull"] = pull
             if buildargs:
                 kwargs["build_args"] = buildargs
             kwargs["stream_logs"] = True
+            kwargs["cache"] = self.conf.cache
+
+            # pull layer cahce from remote registries
+            if image.cache_from:
+                kwargs["cache_from"] = [{"type": "registry", "ref": ref} for ref in image.cache_from]
+
+            # push inline layer cache
+            if self.conf.push_inline_cache:
+                kwargs["cache_to"] = {"type": "inline"}
+
         try:
             for stream in self.engine_client.build(**kwargs):
                 if isinstance(stream, dict):

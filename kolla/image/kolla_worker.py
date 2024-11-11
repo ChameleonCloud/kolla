@@ -42,7 +42,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(
 class Image(object):
     def __init__(self, name, canonical_name, path, parent_name='',
                  status=Status.UNPROCESSED, parent=None,
-                 source=None, logger=None, engine_client=None):
+                 source=None, logger=None, engine_client=None,
+                 cache_from=None):
         self.name = name
         self.canonical_name = canonical_name
         self.path = path
@@ -57,11 +58,13 @@ class Image(object):
         self.plugins = []
         self.additions = []
         self.engine_client = engine_client
+        self.cache_from = cache_from
 
     def copy(self):
         c = Image(self.name, self.canonical_name, self.path,
                   logger=self.logger, parent_name=self.parent_name,
-                  status=self.status, parent=self.parent)
+                  status=self.status, parent=self.parent,
+                  cache_from=self.cache_from)
         if self.source:
             c.source = self.source.copy()
         if self.children:
@@ -636,10 +639,21 @@ class KollaWorker(object):
             else:
                 parent_name = ''
             del match
+
+            image_kwargs = {}
+
+            if self.conf.cache_from_repo:
+                cache_from_repo = self.conf.cache_from_repo
+                cache_from_tags = [self.tag]
+                cache_from_tags.extend(self.conf.cache_from_tags)
+                cache_from = [f"{cache_from_repo}/{image_name}:{tag}" for tag in cache_from_tags]
+                image_kwargs["cache_from"]=cache_from
+
             image = Image(image_name, canonical_name, path,
                           parent_name=parent_name,
                           logger=utils.make_a_logger(self.conf, image_name),
-                          engine_client=self.engine_client)
+                          engine_client=self.engine_client,
+                          **image_kwargs)
 
             # NOTE(jeffrey4l): register the opts if the section didn't
             # register in the kolla/common/config.py file

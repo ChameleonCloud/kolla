@@ -19,10 +19,16 @@ try:
 except (ImportError):
     LOG.debug("Docker python library was not found")
 
+try:
+    import python_on_whales
+except ImportError:
+    LOG.debug("python_on_whales library was not found")
+
 
 class Engine(Enum):
 
     DOCKER = "docker"
+    WHALES = "whales"
 
 
 class UnsupportedEngineError(ValueError):
@@ -38,6 +44,8 @@ class UnsupportedEngineError(ValueError):
 def getEngineException(conf):
     if conf.engine == Engine.DOCKER.value:
         return (docker.errors.DockerException)
+    elif conf.engine == Engine.WHALES.value:
+        return python_on_whales.exceptions.DockerException
     else:
         raise UnsupportedEngineError(conf.engine)
 
@@ -46,6 +54,9 @@ def getEngineClient(conf):
     if conf.engine == Engine.DOCKER.value:
         kwargs_env = docker.utils.kwargs_from_env()
         return docker.APIClient(version='auto', **kwargs_env)
+    elif conf.engine == Engine.WHALES.value:
+        kwargs_env = docker.utils.kwargs_from_env()
+        return python_on_whales.DockerClient(**kwargs_env)
     else:
         raise UnsupportedEngineError(conf.engine)
 
@@ -53,5 +64,7 @@ def getEngineClient(conf):
 def getEngineVersion(conf):
     if conf.engine == Engine.DOCKER.value:
         return StrictVersion(docker.__version__)
+    elif conf.engine == Engine.WHALES.value:
+        return StrictVersion(python_on_whales.__version__)
     else:
         raise UnsupportedEngineError(conf.engine)

@@ -246,8 +246,12 @@ _CLI_OPTS = [
                help='Prefix prepended to image names'),
     cfg.StrOpt('repos-yaml', default='',
                help='Path to alternative repos.yaml file'),
-    cfg.StrOpt('engine', default='docker', choices=['docker'],
-               help='Container engine to build images on.')
+    cfg.StrOpt('engine', default='docker', choices=['docker','whales'],
+               help='Container engine to build images on.'),
+    cfg.StrOpt('cache_from_repo', default=None, help='repository to fetch image cache from'),
+    cfg.MultiOpt('cache_from_tags', types.String(), 
+                 help='additional tags to fetch image cache from, can be specified multiple times.'),
+    cfg.BoolOpt('push_inline_cache', default=False, help='whether to push layer cahe to repo inline'),
 ]
 
 _BASE_OPTS = [

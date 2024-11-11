@@ -246,7 +246,7 @@ _CLI_OPTS = [
                help='Prefix prepended to image names'),
     cfg.StrOpt('repos-yaml', default='',
                help='Path to alternative repos.yaml file'),
-    cfg.StrOpt('engine', default='docker', choices=['docker'],
+    cfg.StrOpt('engine', default='docker', choices=['docker','whales'],
                help='Container engine to build images on.')
 ]
 

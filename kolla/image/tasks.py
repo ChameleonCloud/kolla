@@ -420,8 +420,7 @@ class BuildTask(EngineTask):
                 else:
                     for line in stream.split("\n"):
                         if line:
-                            self.logger.error('%s', line)
-                    return
+                            self.logger.info("%s", line)
 
             if image.status != Status.ERROR and self.conf.squash and \
                self.conf.engine == engine.Engine.DOCKER.value:

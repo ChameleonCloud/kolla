@@ -349,5 +349,9 @@ USERS = {
     'tunelo-user': {
         'uid': 42591,
         'gid': 42591,
+    },
+    'k3s-user': {
+        'uid': 42592,
+        'gid': 42592,
     }
 }

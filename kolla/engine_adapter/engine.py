@@ -19,6 +19,11 @@ except (ImportError):
     LOG.debug("Docker python library was not found")
 
 try:
+    import python_on_whales
+except ImportError:
+    LOG.debug("python_on_whales library was not found")
+    
+try:
     import podman
 except (ImportError, ModuleNotFoundError):
     LOG.debug("Podman python library was not found")
@@ -28,6 +33,7 @@ except (ImportError, ModuleNotFoundError):
 class Engine(Enum):
 
     DOCKER = "docker"
+    WHALES = "whales"
     PODMAN = "podman"
 
 
@@ -44,6 +50,8 @@ class UnsupportedEngineError(ValueError):
 def getEngineException(conf):
     if conf.engine == Engine.DOCKER.value:
         return (docker.errors.DockerException)
+    elif conf.engine == Engine.WHALES.value:
+        return python_on_whales.exceptions.DockerException
     elif conf.engine == Engine.PODMAN.value:
         return (podman.errors.exceptions.APIError,
                 podman.errors.exceptions.PodmanError)
@@ -55,6 +63,8 @@ def getEngineClient(conf):
     if conf.engine == Engine.DOCKER.value:
         kwargs_env = docker.utils.kwargs_from_env()
         return docker.DockerClient(version='auto', **kwargs_env)
+    elif conf.engine == Engine.WHALES.value:
+        return python_on_whales.DockerClient()
     elif conf.engine == Engine.PODMAN.value:
         client = podman.PodmanClient(base_url=conf.podman_base_url)
         try:

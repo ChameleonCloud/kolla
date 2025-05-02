@@ -409,31 +409,45 @@ class BuildTask(EngineTask):
                 kwargs["layers"] = False
             else:
                 kwargs["layers"] = True
+        if self.conf.engine == engine.Engine.WHALES.value:
+            kwargs["context_path"] = image.path
+            kwargs["tags"] = [image.canonical_name]
+            kwargs["pull"] = pull
+            if buildargs:
+                kwargs["build_args"] = buildargs
+            kwargs["stream_logs"] = True
+            kwargs["cache"] = self.conf.cache
+            buildcmd = self.engine_client.build
+        else:
+            kwargs["path"] = image.path,
+            kwargs["tag"] = image.canonical_name,
+            kwargs["nocache"] = not self.conf.cache,
+            kwargs["rm"] = True,
+            kwargs["network_mode"] = self.conf.network_mode,
+            kwargs["pull"] = pull,
+            kwargs["forcerm"] = self.forcerm,
+            kwargs["platform"] = self.conf.platform,
+            kwargs["buildargs"] = buildargs,
+            buildcmd = self.engine_client.images.build
         try:
-            for stream in self.engine_client.images.build(
-                    path=image.path,
-                    tag=image.canonical_name,
-                    nocache=not self.conf.cache,
-                    rm=True,
-                    network_mode=self.conf.network_mode,
-                    pull=pull,
-                    forcerm=self.forcerm,
-                    platform=self.conf.platform,
-                    buildargs=buildargs,
-                    **kwargs)[1]:
+            for stream in buildcmd(**kwargs):
                 if self.conf.engine == engine.Engine.PODMAN.value:
                     stream = json.loads(stream)
-                if 'stream' in stream:
-                    for line in stream['stream'].split('\n'):
-                        if line:
-                            self.logger.info('%s', line)
-                if 'errorDetail' in stream:
-                    image.status = Status.ERROR
-                    self.logger.error('Error\'d with the following message')
-                    for line in stream['errorDetail']['message'].split('\n'):
-                        if line:
-                            self.logger.error('%s', line)
-                    return
+                if isinstance(stream, dict):
+                    if 'stream' in stream:
+                        for line in stream['stream'].split('\n'):
+                            if line:
+                                self.logger.info('%s', line)
+                    if 'errorDetail' in stream:
+                        image.status = Status.ERROR
+                        self.logger.error('Error\'d with the following message')
+                        for line in stream['errorDetail']['message'].split('\n'):
+                            if line:
+                                self.logger.error('%s', line)
+                        return
+                for line in stream.split("\n"):
+                    if line:
+                        self.logger.info("%s", line)
 
             if image.status != Status.ERROR and self.conf.squash and \
                self.conf.engine == engine.Engine.DOCKER.value:

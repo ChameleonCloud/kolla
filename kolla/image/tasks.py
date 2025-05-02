@@ -416,8 +416,15 @@ class BuildTask(EngineTask):
             if buildargs:
                 kwargs["build_args"] = buildargs
             kwargs["stream_logs"] = True
-            kwargs["cache"] = self.conf.cache
             buildcmd = self.engine_client.build
+            # make things work with buildx
+            kwargs["push"] = True # push to registry, so tag available for following builds
+            if self.conf.cache:
+                cachepath = f"{image.canonical_name}-cache"
+                kwargs["cache_from"] = [
+                    {"type":"registry", "ref": cachepath},
+                ]
+                kwargs["cache_to"] = {"type":"registry","ref": cachepath, "mode":"max"}
         else:
             kwargs["path"] = image.path,
             kwargs["tag"] = image.canonical_name,

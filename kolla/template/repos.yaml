@@ -42,7 +42,7 @@ debian:
     component: "main"
     gpg_key: "erlang-ppa.gpg"
   erlang-26:
-    url: "https://ppa.launchpadcontent.net/rabbitmq/rabbitmq-erlang/ubuntu"
+    url: "https://ppa.launchpadcontent.net/rabbitmq/rabbitmq-erlang-26/ubuntu"
     suite: "focal"
     component: "main"
     gpg_key: "erlang-ppa.gpg"
@@ -94,7 +94,7 @@ debian-aarch64:
     component: "main"
     gpg_key: "erlang-ppa.gpg"
   erlang-26:
-    url: "https://ppa.launchpadcontent.net/rabbitmq/rabbitmq-erlang/ubuntu"
+    url: "https://ppa.launchpadcontent.net/rabbitmq/rabbitmq-erlang-26/ubuntu"
     suite: "focal"
     component: "main"
     gpg_key: "erlang-ppa.gpg"
@@ -183,7 +183,7 @@ ubuntu:
     component: "main"
     gpg_key: "erlang-ppa.gpg"
   erlang-26:
-    url: "https://ppa.launchpadcontent.net/rabbitmq/rabbitmq-erlang/ubuntu"
+    url: "https://ppa.launchpadcontent.net/rabbitmq/rabbitmq-erlang-26/ubuntu"
     suite: "jammy"
     component: "main"
     gpg_key: "erlang-ppa.gpg"
@@ -235,7 +235,7 @@ ubuntu-aarch64:
     component: "main"
     gpg_key: "erlang-ppa.gpg"
   erlang-26:
-    url: "https://ppa.launchpadcontent.net/rabbitmq/rabbitmq-erlang/ubuntu"
+    url: "https://ppa.launchpadcontent.net/rabbitmq/rabbitmq-erlang-26/ubuntu"
     suite: "jammy"
     component: "main"
     gpg_key: "erlang-ppa.gpg"

@@ -107,14 +107,20 @@ class PushTask(EngineTask):
                 self.success = False
 
     def push_image(self, image):
-        kwargs = dict(stream=True, decode=True)
+        if self.conf.engine == engine.Engine.DOCKER.value:
+            kwargs = dict(stream=True, decode=True)
+            for response in self.engine_client.push(image.canonical_name, **kwargs):
+                if "stream" in response:
+                    self.logger.info(response["stream"])
+                elif "errorDetail" in response:
+                    raise PushError(response["errorDetail"]["message"])
 
-        for response in self.engine_client.push(
-                image.canonical_name, **kwargs):
-            if 'stream' in response:
-                self.logger.info(response['stream'])
-            elif 'errorDetail' in response:
-                raise PushError(response['errorDetail']['message'])
+        if self.conf.engine == engine.Engine.WHALES.value:
+            kwargs = dict(quiet=True)
+            try:
+                self.engine_client.push(image.canonical_name, **kwargs)
+            except Exception as ex:
+                raise PushError(ex)
 
         # Reset any previous errors.
         image.status = Status.BUILT
@@ -367,28 +373,54 @@ class BuildTask(EngineTask):
         pull = self.conf.pull if image.parent is None else False
 
         buildargs = self.update_buildargs()
+
+        kwargs = {}
+        if self.conf.engine == engine.Engine.DOCKER.value:
+            kwargs["path"] = image.path
+            kwargs["tag"] = image.canonical_name
+            kwargs["nocache"] = not self.conf.cache
+            kwargs["rm"] = True
+            kwargs["decode"] = True
+            kwargs["network_mode"] = self.conf.network_mode
+            kwargs["pull"] = pull
+            kwargs["forcerm"] = self.forcerm
+            kwargs["buildargs"] = buildargs
+
+        if self.conf.engine == engine.Engine.WHALES.value:
+            kwargs["context_path"] = image.path
+            kwargs["tags"] = [image.canonical_name]
+            kwargs["pull"] = pull
+            if buildargs:
+                kwargs["build_args"] = buildargs
+            kwargs["stream_logs"] = True
+            kwargs["cache"] = self.conf.cache
+
+            # pull layer cahce from remote registries
+            if image.cache_from:
+                kwargs["cache_from"] = [{"type": "registry", "ref": ref} for ref in image.cache_from]
+
+            # push inline layer cache
+            if self.conf.push_inline_cache:
+                kwargs["cache_to"] = {"type": "inline"}
+
         try:
-            for stream in \
-                self.engine_client.build(path=image.path,
-                                         tag=image.canonical_name,
-                                         nocache=not self.conf.cache,
-                                         rm=True,
-                                         decode=True,
-                                         network_mode=self.conf.network_mode,
-                                         pull=pull,
-                                         forcerm=self.forcerm,
-                                         buildargs=buildargs):
-                if 'stream' in stream:
-                    for line in stream['stream'].split('\n'):
+            for stream in self.engine_client.build(**kwargs):
+                if isinstance(stream, dict):
+                    if "stream" in stream:
+                        for line in stream["stream"].split("\n"):
+                            if line:
+                                self.logger.info("%s", line)
+                    if "errorDetail" in stream:
+                        image.status = Status.ERROR
+                        self.logger.error("Error'd with the following message")
+                        for line in stream["errorDetail"]["message"].split("\n"):
+                            if line:
+                                self.logger.error("%s", line)
+                        return
+                else:
+                    for line in stream.split("\n"):
                         if line:
-                            self.logger.info('%s', line)
-                if 'errorDetail' in stream:
-                    image.status = Status.ERROR
-                    self.logger.error('Error\'d with the following message')
-                    for line in stream['errorDetail']['message'].split('\n'):
-                        if line:
-                            self.logger.error('%s', line)
-                    return
+                            self.logger.info("%s", line)
 
             if image.status != Status.ERROR and self.conf.squash and \
                self.conf.engine == engine.Engine.DOCKER.value:

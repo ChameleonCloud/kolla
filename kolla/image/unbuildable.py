@@ -24,6 +24,7 @@ UNBUILDABLE_IMAGES = {
     # Issues for SHA1 keys:
     # https://github.com/grafana/grafana/issues/41036
     'centos': {
+        "bifrost-base",          # Failing after unmaintained switch
         "hacluster-pcs",         # Missing crmsh package
         "nova-spicehtml5proxy",  # Missing spicehtml5 package
         "ovsdpdk",               # Not supported on CentOS
@@ -31,9 +32,11 @@ UNBUILDABLE_IMAGES = {
     },
 
     'debian': {
+        "bifrost-base",          # Failing after unmaintained switch
     },
 
     'rocky': {
+        "bifrost-base",          # Failing after unmaintained switch
         "collectd",              # Missing libpqos.so.4()(64bit)
         "hacluster-pcs",         # Missing crmsh package
         "nova-spicehtml5proxy",  # Missing spicehtml5 package
@@ -42,6 +45,7 @@ UNBUILDABLE_IMAGES = {
     },
 
     'ubuntu': {
+        "bifrost-base",          # Failing after unmaintained switch
     },
 
     'ubuntu+aarch64': {

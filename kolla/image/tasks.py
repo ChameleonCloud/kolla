@@ -399,6 +399,9 @@ class BuildTask(EngineTask):
         buildargs = self.update_buildargs()
 
         kwargs = {}
+        if hasattr(image, 'labels') and image.labels:
+            kwargs['labels'] = image.labels
+
         if self.conf.engine == engine.Engine.PODMAN.value:
             # TODO(kevko): dockerfile path is a workaround,
             # should be removed as soon as it will be fixed in podman-py

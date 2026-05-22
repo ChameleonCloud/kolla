@@ -29,7 +29,7 @@ RUN chmod 750 /etc/sudoers.d \
 COPY extend_start.sh /usr/local/bin/kolla_extend_start
 
 RUN touch /usr/local/bin/kolla_tunelo_extend_start \
-    && chmod 755 /usr/local/bin/kolla_extend_start /usr/local/bin/kolla_tunelo_extend_start \
+    && chmod 644 /usr/local/bin/kolla_extend_start /usr/local/bin/kolla_tunelo_extend_start \
     && chown -R tunelo: /etc/tunelo
 
 {% block tunelo_base_footer %}{% endblock %}

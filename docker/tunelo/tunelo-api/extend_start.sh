@@ -13,5 +13,3 @@ fi
 if [[ "${!KOLLA_OSM[@]}" ]]; then
     exit 0
 fi
-
-. /usr/local/bin/kolla_httpd_setup

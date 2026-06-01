@@ -1,0 +1,14 @@
+FROM {{ namespace }}/{{ image_prefix }}tunelo-base:{{ tag }}
+{% block labels %}
+LABEL maintainer="{{ maintainer }}" name="{{ image_name }}" build-date="{{ build_date }}"
+{% endblock %}
+
+{% block tunelo_api_header %}{% endblock %}
+
+COPY extend_start.sh /usr/local/bin/kolla_tunelo_extend_start
+RUN chmod 644 /usr/local/bin/kolla_tunelo_extend_start
+
+{% block tunelo_api_footer %}{% endblock %}
+{% block footer %}{% endblock %}
+
+USER tunelo

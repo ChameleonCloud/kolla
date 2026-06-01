@@ -328,6 +328,10 @@ SOURCES = {
         'type': 'url',
         'location': ('$tarballs_base/openstack/trove/'
                      'trove-${openstack_branch}.tar.gz')},
+    'tunelo-base': {
+        'type': 'url',
+        'location': ('$tarballs_base/tunelo/'
+                     'tunelo-0.0.1.tar.gz')},
     'venus-base': {
         'type': 'url',
         'location': ('$tarballs_base/openstack/venus/'

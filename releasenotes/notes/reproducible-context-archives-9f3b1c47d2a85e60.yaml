@@ -1,0 +1,17 @@
+---
+fixes:
+  - |
+    Archives added to the image build context (``plugins-archive``,
+    ``additions-archive`` and archives built from ``local`` directory
+    sources) are now reproducible: file modification times are pinned
+    to the Unix epoch, in addition to the existing root:root ownership
+    normalisation. Previously these archives changed on every build
+    even with unchanged content, invalidating the container engine's
+    layer cache for every image consuming them.
+    `LP#1839319 <https://bugs.launchpad.net/kolla/+bug/1839319>`__
+upgrade:
+  - |
+    Files extracted from ``plugins-archive``, ``additions-archive`` and
+    ``local`` directory source archives now have a modification time of
+    0 (Unix epoch). The first build after upgrading will not match
+    previously cached layers for these archives.

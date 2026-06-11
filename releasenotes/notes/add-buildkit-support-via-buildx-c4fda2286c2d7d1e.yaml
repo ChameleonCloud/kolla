@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added support for building images using Docker BuildKit via
+    ``docker buildx build``. It is enabled by default, users can
+    disable it with the ``--nobuildkit`` flag or by
+    setting ``buildkit = False`` in the ``[DEFAULT]`` section of
+    ``kolla-build.conf``. Requires the ``docker-buildx-plugin`` to be
+    installed and only applies when ``--engine docker`` is used.

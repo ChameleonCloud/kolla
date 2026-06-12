@@ -23,6 +23,7 @@ from distutils.version import StrictVersion
 from kolla.common import config as common_config
 from kolla.common import utils
 from kolla.engine_adapter import engine
+from kolla.image import bake
 from kolla.image.kolla_worker import KollaWorker
 from kolla.image.utils import LOG
 from kolla.image.utils import Status
@@ -111,7 +112,22 @@ def run_build():
         sys.exit(1)
     LOG.info(f'Using engine: {conf.engine}')
 
-    if conf.engine == engine.Engine.DOCKER.value:
+    if conf.bake:
+        if not conf.work_dir:
+            LOG.error('--bake requires --work-dir, otherwise the bake file '
+                      'would point into a temporary directory')
+            sys.exit(1)
+        if conf.squash:
+            LOG.error('--bake does not support --squash')
+            sys.exit(1)
+        if conf.skip_existing:
+            LOG.error('--bake does not support --skip-existing')
+            sys.exit(1)
+        if conf.push:
+            LOG.info('--push is ignored with --bake, use '
+                     '"docker buildx bake --push" instead')
+
+    if conf.engine == engine.Engine.DOCKER.value and not conf.bake:
         try:
             import docker
             StrictVersion(docker.__version__)
@@ -162,6 +178,18 @@ def run_build():
     if conf.list_dependencies:
         kolla.list_dependencies()
         return
+    if conf.bake:
+        kolla.prepare_bake_contexts()
+        bake_path = bake.write_bake_file(conf, kolla.images,
+                                         kolla.working_dir)
+        LOG.info('Bake file written to %s', bake_path)
+        LOG.info('Build with: docker buildx bake -f %s', bake_path)
+        # Successfully prepared contexts count as good results so that
+        # get_image_statuses() drives the exit code correctly.
+        for image in kolla.images:
+            if image.status == Status.MATCHED:
+                image.status = Status.BUILT
+        return kolla.get_image_statuses()
 
     push_queue = queue.Queue()
     build_queue = kolla.build_queue(push_queue)

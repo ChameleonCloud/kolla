@@ -208,6 +208,13 @@ _CLI_OPTS = [
                help='The container image tag'),
     cfg.BoolOpt('template-only', default=False,
                 help="Don't build images. Generate Dockerfile only"),
+    cfg.BoolOpt('bake', default=False,
+                help="Don't build images. Prepare build contexts in the "
+                     "work dir and generate a docker buildx bake file. "
+                     "Requires --work-dir"),
+    cfg.StrOpt('bake-file', default='docker-bake.hcl',
+               help='Name of the generated bake file, relative to the '
+                    'working docker directory (used with --bake)'),
     cfg.IntOpt('timeout', default=120,
                help='Time in seconds after which any operation times out'),
     cfg.MultiOpt('template-override', types.String(),

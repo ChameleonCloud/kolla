@@ -26,6 +26,7 @@ from kolla.common import utils
 from kolla.engine_adapter import engine
 from kolla import exception
 from kolla.image.tasks import BuildTask
+from kolla.image.tasks import prepare_build_context
 from kolla.image.unbuildable import UNBUILDABLE_IMAGES
 from kolla.image.utils import LOG
 from kolla.image.utils import Status
@@ -156,7 +157,8 @@ class KollaWorker(object):
             if not (conf.template_only or
                     conf.save_dependency or
                     conf.list_images or
-                    conf.list_dependencies):
+                    conf.list_dependencies or
+                    conf.bake):
                 LOG.error("Unable to connect to container engine daemon, "
                           "exiting")
                 LOG.info("Exception caught: {0}".format(e))
@@ -741,6 +743,14 @@ class KollaWorker(object):
                 if (image.parent_name == parent_name):
                     parent.children.append(image)
                     image.parent = parent
+
+    def prepare_bake_contexts(self):
+        for image in self.images:
+            if image.status != Status.MATCHED:
+                continue
+            if not prepare_build_context(self.conf, image):
+                LOG.error('Failed to prepare build context for %s',
+                          image.name)
 
     def build_queue(self, push_queue):
         """Organizes Queue list.

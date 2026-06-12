@@ -20,6 +20,7 @@ import tempfile
 from unittest import mock
 
 from kolla.cmd import build as build_cmd
+from kolla.image import bake
 from kolla.image import build
 from kolla.image.kolla_worker import Image
 from kolla.image import tasks
@@ -502,6 +503,87 @@ class TasksTest(base.TestCase):
         self.conf.push = FAKE_IMAGE_CHILD_UNMATCHED
         get_result = builder.followups
         self.assertEqual(1, len(get_result))
+
+
+class BakeTest(base.TestCase):
+
+    def setUp(self):
+        super(BakeTest, self).setUp()
+        self.working_dir = self.useFixture(fixtures.TempDir()).path
+        self.image = FAKE_IMAGE.copy()
+        self.image.path = os.path.join(self.working_dir, 'image-base')
+        self.imageChild = FAKE_IMAGE_CHILD.copy()
+        self.imageChild.parent = self.image
+        self.imageChild.path = os.path.join(self.working_dir, 'image-child')
+        self.imageUnmatched = FAKE_IMAGE_CHILD_UNMATCHED.copy()
+        self.images = [self.image, self.imageChild, self.imageUnmatched]
+
+    @mock.patch.dict(os.environ, clear=True)
+    def test_build_bake_definition(self):
+        definition = bake.build_bake_definition(self.conf, self.images,
+                                                self.working_dir)
+        self.assertEqual(['image-base', 'image-child'],
+                         definition['group']['default']['targets'])
+        targets = definition['target']
+        self.assertEqual({'image-base', 'image-child'}, set(targets))
+        base_target = targets['image-base']
+        self.assertEqual('image-base', base_target['context'])
+        self.assertEqual(['image-base:latest'], base_target['tags'])
+        self.assertTrue(base_target['pull'])
+        self.assertNotIn('contexts', base_target)
+        child_target = targets['image-child']
+        self.assertEqual({'image-base:latest': 'target:image-base'},
+                         child_target['contexts'])
+        self.assertNotIn('pull', child_target)
+
+    @mock.patch.dict(os.environ, {'http_proxy': 'http://FROM_ENV:8080'},
+                     clear=True)
+    def test_build_bake_definition_build_args(self):
+        definition = bake.build_bake_definition(self.conf, self.images,
+                                                self.working_dir)
+        for target in definition['target'].values():
+            self.assertEqual({'http_proxy': 'http://FROM_ENV:8080'},
+                             target['args'])
+
+    @mock.patch.dict(os.environ, clear=True)
+    def test_render_hcl(self):
+        definition = bake.build_bake_definition(self.conf,
+                                                [self.image, self.imageChild],
+                                                self.working_dir)
+        expected = '\n'.join([
+            'group "default" {',
+            '  targets = ["image-base", "image-child"]',
+            '}',
+            '',
+            'target "image-base" {',
+            '  context = "image-base"',
+            '  dockerfile = "Dockerfile"',
+            '  tags = ["image-base:latest"]',
+            '  pull = true',
+            '  network = "host"',
+            '}',
+            '',
+            'target "image-child" {',
+            '  context = "image-child"',
+            '  dockerfile = "Dockerfile"',
+            '  tags = ["image-child:latest"]',
+            '  contexts = {',
+            '    "image-base:latest" = "target:image-base"',
+            '  }',
+            '  network = "host"',
+            '}',
+            '',
+        ])
+        self.assertEqual(expected, bake.render_hcl(definition))
+
+    @mock.patch.dict(os.environ, clear=True)
+    def test_prepare_build_context_without_engine(self):
+        image = FAKE_IMAGE.copy()
+        image.path = self.useFixture(fixtures.TempDir()).path
+        self.assertTrue(tasks.prepare_build_context(self.conf, image))
+        for archive in ('plugins-archive', 'additions-archive'):
+            self.assertTrue(
+                os.path.exists(os.path.join(image.path, archive)))
 
 
 class KollaWorkerTest(base.TestCase):

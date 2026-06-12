@@ -47,6 +47,181 @@ def normalize_tarinfo(tarinfo):
     return tarinfo
 
 
+def process_source(conf, image, source, logger=None):
+    logger = logger or image.logger
+
+    if not source['enabled']:
+        logger.debug("Skipping disabled source %s", source['name'])
+        return
+
+    dest_archive = os.path.join(image.path, source['name'] + '-archive')
+
+    if source.get('type') == 'url':
+        logger.debug("Getting archive from %s", source['source'])
+        try:
+            r = requests.get(source['source'], timeout=conf.timeout)
+        except requests_exc.Timeout:
+            logger.exception(
+                'Request timed out while getting archive from %s',
+                source['source'])
+            image.status = Status.ERROR
+            return
+
+        if r.status_code == 200:
+            with open(dest_archive, 'wb') as f:
+                f.write(r.content)
+        else:
+            logger.error(
+                'Failed to download archive: status_code %s',
+                r.status_code)
+            image.status = Status.ERROR
+            return
+
+    elif source.get('type') == 'git':
+        clone_dir = '{}-{}'.format(dest_archive,
+                                   source['reference'].replace('/', '-'))
+        if os.path.exists(clone_dir):
+            logger.info("Clone dir %s exists. Removing it.", clone_dir)
+            shutil.rmtree(clone_dir)
+
+        try:
+            logger.debug("Cloning from %s", source['source'])
+            git.Git().clone(source['source'], clone_dir)
+            git.Git(clone_dir).checkout(source['reference'])
+            reference_sha = git.Git(clone_dir).rev_parse('HEAD')
+            logger.debug("Git checkout by reference %s (%s)",
+                         source['reference'], reference_sha)
+        except Exception as e:
+            logger.error("Failed to get source from git: %s",
+                         source['source'])
+            logger.error("Error: %s", e)
+            # clean-up clone folder to retry
+            shutil.rmtree(clone_dir)
+            image.status = Status.ERROR
+            return
+
+        with tarfile.open(dest_archive, 'w') as tar:
+            tar.add(clone_dir, arcname=os.path.basename(clone_dir),
+                    filter=normalize_tarinfo)
+
+    elif source.get('type') == 'local':
+        logger.debug("Getting local archive from %s", source['source'])
+        if os.path.isdir(source['source']):
+            with tarfile.open(dest_archive, 'w') as tar:
+                tar.add(source['source'],
+                        arcname=os.path.basename(source['source']),
+                        filter=normalize_tarinfo)
+        else:
+            shutil.copyfile(source['source'], dest_archive)
+
+    else:
+        logger.error("Wrong source type '%s'", source.get('type'))
+        image.status = Status.ERROR
+        return
+
+    # Set time on destination archive to epoch 0
+    os.utime(dest_archive, (0, 0))
+
+    return dest_archive
+
+
+def make_an_archive(conf, image, items, arcname, item_child_path=None,
+                    logger=None):
+    logger = logger or image.logger
+
+    def _test_malicious_tarball(archive, path):
+        tar_file = tarfile.open(archive, 'r|*')
+        for n in tar_file.getnames():
+            if not os.path.abspath(os.path.join(path, n)).startswith(path):
+                tar_file.close()
+                logger.error(f'Unsafe filenames in archive {archive}')
+                raise ArchivingError
+
+    if not item_child_path:
+        item_child_path = arcname
+    archives = list()
+    items_path = os.path.join(image.path, item_child_path)
+    for item in items:
+        archive_path = process_source(conf, image, item, logger)
+        if image.status in STATUS_ERRORS:
+            raise ArchivingError
+        if archive_path:
+            archives.append(archive_path)
+    if archives:
+        for archive in archives:
+            _test_malicious_tarball(archive, items_path)
+            with tarfile.open(archive, 'r') as archive_tar:
+                archive_tar.extractall(path=items_path)  # nosec
+    else:
+        try:
+            os.mkdir(items_path)
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                logger.info('Directory %s already exist. Skipping.',
+                            items_path)
+            else:
+                logger.error('Failed to create directory %s: %s',
+                             items_path, e)
+                image.status = Status.CONNECTION_ERROR
+                raise ArchivingError
+    arc_path = os.path.join(image.path, '%s-archive' % arcname)
+
+    with tarfile.open(arc_path, 'w') as tar:
+        tar.add(items_path, arcname=arcname, filter=normalize_tarinfo)
+    return len(os.listdir(items_path))
+
+
+def prepare_build_context(conf, image, logger=None):
+    """Fetch source and create plugins/additions archives in image.path.
+
+    Returns True on success. On failure, image.status is set to an
+    error status and False is returned.
+    """
+    logger = logger or image.logger
+
+    if image.source and 'source' in image.source:
+        process_source(conf, image, image.source, logger)
+        if image.status in STATUS_ERRORS:
+            return False
+
+    try:
+        plugins_am = make_an_archive(conf, image, image.plugins, 'plugins',
+                                     logger=logger)
+    except ArchivingError:
+        logger.error("Failed turning any plugins into a plugins archive")
+        return False
+    else:
+        logger.debug("Turned %s plugins into plugins archive", plugins_am)
+    try:
+        additions_am = make_an_archive(conf, image, image.additions,
+                                       'additions', logger=logger)
+    except ArchivingError:
+        logger.error("Failed turning any additions into a additions archive")
+        return False
+    else:
+        logger.debug("Turned %s additions into additions archive",
+                     additions_am)
+    return True
+
+
+def get_build_args(conf):
+    buildargs = dict()
+    if conf.build_args:
+        buildargs = dict(conf.build_args)
+
+    proxy_vars = ('HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY',
+                  'https_proxy', 'FTP_PROXY', 'ftp_proxy',
+                  'NO_PROXY', 'no_proxy')
+
+    for proxy_var in proxy_vars:
+        if proxy_var in os.environ and proxy_var not in buildargs:
+            buildargs[proxy_var] = os.environ.get(proxy_var)
+
+    if not buildargs:
+        return None
+    return buildargs
+
+
 class EngineTask(task.Task):
     def __init__(self, conf):
         super(EngineTask, self).__init__()
@@ -176,145 +351,12 @@ class BuildTask(EngineTask):
         return followups
 
     def process_source(self, image, source):
-        if not source['enabled']:
-            self.logger.debug("Skipping disabled source %s", source['name'])
-            return
-
-        dest_archive = os.path.join(image.path, source['name'] + '-archive')
-
-        if source.get('type') == 'url':
-            self.logger.debug("Getting archive from %s", source['source'])
-            try:
-                r = requests.get(source['source'], timeout=self.conf.timeout)
-            except requests_exc.Timeout:
-                self.logger.exception(
-                    'Request timed out while getting archive from %s',
-                    source['source'])
-                image.status = Status.ERROR
-                return
-
-            if r.status_code == 200:
-                with open(dest_archive, 'wb') as f:
-                    f.write(r.content)
-            else:
-                self.logger.error(
-                    'Failed to download archive: status_code %s',
-                    r.status_code)
-                image.status = Status.ERROR
-                return
-
-        elif source.get('type') == 'git':
-            clone_dir = '{}-{}'.format(dest_archive,
-                                       source['reference'].replace('/', '-'))
-            if os.path.exists(clone_dir):
-                self.logger.info("Clone dir %s exists. Removing it.",
-                                 clone_dir)
-                shutil.rmtree(clone_dir)
-
-            try:
-                self.logger.debug("Cloning from %s", source['source'])
-                git.Git().clone(source['source'], clone_dir)
-                git.Git(clone_dir).checkout(source['reference'])
-                reference_sha = git.Git(clone_dir).rev_parse('HEAD')
-                self.logger.debug("Git checkout by reference %s (%s)",
-                                  source['reference'], reference_sha)
-            except Exception as e:
-                self.logger.error("Failed to get source from git: %s",
-                                  source['source'])
-                self.logger.error("Error: %s", e)
-                # clean-up clone folder to retry
-                shutil.rmtree(clone_dir)
-                image.status = Status.ERROR
-                return
-
-            with tarfile.open(dest_archive, 'w') as tar:
-                tar.add(clone_dir, arcname=os.path.basename(clone_dir),
-                        filter=normalize_tarinfo)
-
-        elif source.get('type') == 'local':
-            self.logger.debug("Getting local archive from %s",
-                              source['source'])
-            if os.path.isdir(source['source']):
-                with tarfile.open(dest_archive, 'w') as tar:
-                    tar.add(source['source'],
-                            arcname=os.path.basename(source['source']),
-                            filter=normalize_tarinfo)
-            else:
-                shutil.copyfile(source['source'], dest_archive)
-
-        else:
-            self.logger.error("Wrong source type '%s'", source.get('type'))
-            image.status = Status.ERROR
-            return
-
-        # Set time on destination archive to epoch 0
-        os.utime(dest_archive, (0, 0))
-
-        return dest_archive
+        return process_source(self.conf, image, source, self.logger)
 
     def update_buildargs(self):
-        buildargs = dict()
-        if self.conf.build_args:
-            buildargs = dict(self.conf.build_args)
-
-        proxy_vars = ('HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY',
-                      'https_proxy', 'FTP_PROXY', 'ftp_proxy',
-                      'NO_PROXY', 'no_proxy')
-
-        for proxy_var in proxy_vars:
-            if proxy_var in os.environ and proxy_var not in buildargs:
-                buildargs[proxy_var] = os.environ.get(proxy_var)
-
-        if not buildargs:
-            return None
-        return buildargs
+        return get_build_args(self.conf)
 
     def builder(self, image):
-
-        def _test_malicious_tarball(archive, path):
-            tar_file = tarfile.open(archive, 'r|*')
-            for n in tar_file.getnames():
-                if not os.path.abspath(os.path.join(path, n)).startswith(path):
-                    tar_file.close()
-                    self.logger.error(f'Unsafe filenames in archive {archive}')
-                    raise ArchivingError
-
-        def make_an_archive(items, arcname, item_child_path=None):
-            if not item_child_path:
-                item_child_path = arcname
-            archives = list()
-            items_path = os.path.join(image.path, item_child_path)
-            for item in items:
-                archive_path = self.process_source(image, item)
-                if image.status in STATUS_ERRORS:
-                    raise ArchivingError
-                if archive_path:
-                    archives.append(archive_path)
-            if archives:
-                for archive in archives:
-                    _test_malicious_tarball(archive, items_path)
-                    with tarfile.open(archive, 'r') as archive_tar:
-                        archive_tar.extractall(path=items_path)  # nosec
-            else:
-                try:
-                    os.mkdir(items_path)
-                except OSError as e:
-                    if e.errno == errno.EEXIST:
-                        self.logger.info(
-                            'Directory %s already exist. Skipping.',
-                            items_path)
-                    else:
-                        self.logger.error('Failed to create directory %s: %s',
-                                          items_path, e)
-                        image.status = Status.CONNECTION_ERROR
-                        raise ArchivingError
-            arc_path = os.path.join(image.path, '%s-archive' % arcname)
-
-            with tarfile.open(arc_path, 'w') as tar:
-                tar.add(items_path, arcname=arcname,
-                        filter=normalize_tarinfo)
-            return len(os.listdir(items_path))
-
         self.logger.debug('Processing')
 
         if image.status in [Status.SKIPPED, Status.UNBUILDABLE]:
@@ -335,31 +377,8 @@ class BuildTask(EngineTask):
         image.start = datetime.datetime.now()
         self.logger.info('Building started at %s' % image.start)
 
-        if image.source and 'source' in image.source:
-            self.process_source(image, image.source)
-            if image.status in STATUS_ERRORS:
-                return
-
-        try:
-            plugins_am = make_an_archive(image.plugins, 'plugins')
-        except ArchivingError:
-            self.logger.error(
-                "Failed turning any plugins into a plugins archive")
+        if not prepare_build_context(self.conf, image, self.logger):
             return
-        else:
-            self.logger.debug(
-                "Turned %s plugins into plugins archive",
-                plugins_am)
-        try:
-            additions_am = make_an_archive(image.additions, 'additions')
-        except ArchivingError:
-            self.logger.error(
-                "Failed turning any additions into a additions archive")
-            return
-        else:
-            self.logger.debug(
-                "Turned %s additions into additions archive",
-                additions_am)
 
         # Pull the latest image for the base distro only
         pull = self.conf.pull if image.parent is None else False

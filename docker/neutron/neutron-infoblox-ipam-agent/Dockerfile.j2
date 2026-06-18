@@ -1,6 +1,6 @@
 FROM {{ namespace }}/{{ image_prefix }}neutron-server:{{ tag }}
 {% block labels %}
-LABEL maintainer="{{ maintainer }}" name="{{ image_name }}" build-date="{{ build_date }}"
+LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
 {% endblock %}
 
 # This image inherits from neutron-server image, which is also a leaf image,

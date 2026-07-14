@@ -1,12 +1,12 @@
 FROM {{ namespace }}/{{ image_prefix }}doni-base:{{ tag }}
+{% block labels %}
 LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
+{% endblock %}
 
 {% block doni_worker_header %}{% endblock %}
 
 {% import "macros.j2" as macros with context %}
 
-{# NOTE(jason): we only support 'source' install style because we are NOT #}
-{# building binary packages for this service. #}
 {% if base_package_type == 'rpm' %}
     {% set doni_worker_packages = [] %}
 {% elif base_package_type == 'deb' %}

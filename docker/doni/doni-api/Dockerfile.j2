@@ -1,22 +1,18 @@
 FROM {{ namespace }}/{{ image_prefix }}doni-base:{{ tag }}
+{% block labels %}
 LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
+{% endblock %}
 
 {% block doni_api_header %}{% endblock %}
 
 {% import "macros.j2" as macros with context %}
 
-{# NOTE(jason): we only support 'source' install style because we are NOT #}
-{# building binary packages for this service. #}
 {% if base_package_type == 'rpm' %}
     {% set doni_api_packages = [
         'httpd',
         'mod_ssl',
+        'python3-mod_wsgi'
     ] %}
-    {% if distro_python_version.startswith('3') %}
-    {% set doni_api_packages = doni_api_packages + ['python3-mod_wsgi'] %}
-    {% else %}
-    {% set doni_api_packages = doni_api_packages + ['mod_wsgi'] %}
-    {% endif %}
 {% elif base_package_type == 'deb' %}
     {% set doni_api_packages = [
         'apache2',

@@ -1,5 +1,7 @@
 FROM {{ namespace }}/{{ image_prefix }}prometheus-base:{{ tag }}
+{% block labels %}
 LABEL maintainer="{{ maintainer }}" name="{{ image_name }}"
+{% endblock %}
 
 {% block prometheus_pushgateway_header %}{% endblock %}
 

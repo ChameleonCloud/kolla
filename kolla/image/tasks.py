@@ -14,6 +14,7 @@ import datetime
 import errno
 import os
 import shutil
+import subprocess  # nosec
 import tarfile
 
 import docker.errors
@@ -158,7 +159,7 @@ class BuildTask(EngineTask):
     @property
     def followups(self):
         followups = []
-        if self.conf.push and self.success:
+        if self.conf.push and self.success and not self.conf.buildkit:
             followups.extend([
                 # If we are supposed to push the image into a
                 # container image repository,
@@ -365,17 +366,39 @@ class BuildTask(EngineTask):
         pull = self.conf.pull if image.parent is None else False
 
         buildargs = self.update_buildargs()
+
+        if (self.conf.engine == engine.Engine.DOCKER.value
+                and self.conf.buildkit):
+            self._build_buildkit(image, pull, buildargs)
+            return
+
+        kwargs = {}
+        if self.conf.engine == engine.Engine.PODMAN.value:
+            # TODO(kevko): dockerfile path is a workaround,
+            # should be removed as soon as it will be fixed in podman-py
+            # https://github.com/containers/podman-py/issues/177
+            kwargs["dockerfile"] = image.path + '/Dockerfile'
+            # Podman squash is different by default
+            # https://github.com/containers/buildah/issues/1234
+            if self.conf.squash:
+                kwargs["squash"] = False
+                kwargs["layers"] = False
+            else:
+                kwargs["layers"] = True
         try:
-            for stream in \
-                self.engine_client.build(path=image.path,
-                                         tag=image.canonical_name,
-                                         nocache=not self.conf.cache,
-                                         rm=True,
-                                         decode=True,
-                                         network_mode=self.conf.network_mode,
-                                         pull=pull,
-                                         forcerm=self.forcerm,
-                                         buildargs=buildargs):
+            for stream in self.engine_client.images.build(
+                    path=image.path,
+                    tag=image.canonical_name,
+                    nocache=not self.conf.cache,
+                    rm=True,
+                    network_mode=self.conf.network_mode,
+                    pull=pull,
+                    forcerm=self.forcerm,
+                    platform=self.conf.platform,
+                    buildargs=buildargs,
+                    **kwargs)[1]:
+                if self.conf.engine == engine.Engine.PODMAN.value:
+                    stream = json.loads(stream)
                 if 'stream' in stream:
                     for line in stream['stream'].split('\n'):
                         if line:
@@ -409,6 +432,88 @@ class BuildTask(EngineTask):
             now = datetime.datetime.now()
             self.logger.info('Built at %s (took %s)' %
                              (now, now - image.start))
+
+    def _build_buildkit(self, image, pull, buildargs):
+        platform = self.conf.platform or ''
+        # A comma in --platform means a single invocation producing multiple
+        # platforms (remote/docker-container driver with multiple nodes, or
+        # QEMU). Output must go directly to a registry; --load is not supported
+        # for multi-platform output. No per-arch suffix is needed because the
+        # manifest is assembled in one shot.
+        #
+        # A single platform (no comma) means a per-node build. The image is
+        # loaded into the local daemon under its canonical name so child images
+        # can resolve FROM lines without hitting the registry. The push step
+        # uses a platform-suffixed tag so parallel nodes don't overwrite each
+        # other; a CI step later assembles the per-arch tags into a manifest.
+        multi_platform = ',' in platform
+        if (platform and not multi_platform):
+            platform_arch = platform.split('/')[-1]
+        else:
+            platform_arch = None
+
+        push_tag = None
+        if platform_arch and self.conf.push:
+            name, _, tag = image.canonical_name.rpartition(':')
+            push_tag = '%s:%s-%s' % (name, tag, platform_arch)
+
+        cmd = ['docker', 'buildx', 'build', '--progress=plain']
+        if self.conf.buildkit_builder:
+            cmd.extend(['--builder', self.conf.buildkit_builder])
+        if pull:
+            cmd.append('--pull')
+        if not self.conf.cache:
+            cmd.append('--no-cache')
+        if self.conf.network_mode:
+            cmd.extend(['--network', self.conf.network_mode])
+        if platform:
+            cmd.extend(['--platform', platform])
+
+        cmd.extend(['-t', image.canonical_name])
+        if push_tag:
+            # Also tag with the platform suffix so --load puts both names into
+            # the local daemon; only the suffixed tag is pushed to the registry
+            cmd.extend(['-t', push_tag])
+
+        if self.conf.push and not push_tag:
+            # Multi-platform single-shot or single-arch: buildx pushes directly
+            cmd.append('--push')
+        else:
+            # Per-node single-platform (with or without push): load into the
+            # local daemon so child image FROM lines resolve without a registry
+            # round-trip.
+            cmd.append('--load')
+
+        if buildargs:
+            for k, v in buildargs.items():
+                cmd.extend(['--build-arg', '%s=%s' % (k, v)])
+        cmd.append(image.path)
+
+        try:
+            self._run_cmd(cmd)
+            if push_tag:
+                self._run_cmd(['docker', 'push', push_tag])
+        except Exception:
+            image.status = Status.ERROR
+            self.logger.exception('Unknown error when building')
+        else:
+            image.status = Status.BUILT
+            now = datetime.datetime.now()
+            self.logger.info('Built at %s (took %s)' %
+                             (now, now - image.start))
+
+    def _run_cmd(self, cmd):
+        with subprocess.Popen(  # nosec
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            bufsize=1
+        ) as proc:
+            for line in proc.stdout:
+                self.logger.info(line.rstrip())
+        if proc.returncode != 0:
+            raise subprocess.CalledProcessError(proc.returncode, cmd)
 
     def squash(self):
         image_tag = self.image.canonical_name

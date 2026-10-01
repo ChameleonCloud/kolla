@@ -9,3 +9,6 @@ function init_rpc {
 }
 
 init_rpc
+mkdir -p /etc/ganesha/export.d
+# ganesha.conf includes this file; Ganesha won't start if it's missing.
+touch /etc/ganesha/export.d/INDEX.conf

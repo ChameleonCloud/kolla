@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes BuildKit builds using stale files from a previous build, particularly
+    with git sources, by not setting mtime to the unix epoch when buildx is in
+    use.

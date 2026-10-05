@@ -406,6 +406,29 @@ class TasksTest(base.TestCase):
                 self.assertEqual('root', member.uname)
                 self.assertEqual('root', member.gname)
 
+    def _process_local_source(self):
+        src_dir = self.useFixture(fixtures.TempDir()).path
+        with open(os.path.join(src_dir, 'test.txt'), 'w') as f:
+            f.write('Hello')
+        source = {'name': 'fake-image-base',
+                  'type': 'local',
+                  'enabled': True,
+                  'source': src_dir}
+        builder = tasks.BuildTask(self.conf, self.image, mock.Mock())
+        return builder.process_source(self.image, source)
+
+    @mock.patch(engine_client)
+    def test_process_source_archive_mtime_pinned(self, mock_client):
+        dest_archive = self._process_local_source()
+        self.assertEqual(0, os.stat(dest_archive).st_mtime)
+
+    @mock.patch(engine_client)
+    def test_process_source_archive_mtime_kept_buildkit(self, mock_client):
+        self.conf.set_override('engine', 'docker')
+        self.conf.set_override('buildkit', True)
+        dest_archive = self._process_local_source()
+        self.assertNotEqual(0, os.stat(dest_archive).st_mtime)
+
     @mock.patch.dict(os.environ, clear=True)
     @mock.patch(engine_client)
     def test_empty_plugins_archive_reproducible(self, mock_client):
@@ -1268,6 +1291,22 @@ class MainTest(base.TestCase):
         import subprocess as sp  # nosec
         mock_check_buildx.side_effect = sp.CalledProcessError(1, 'docker')
         self.assertRaises(SystemExit, build.run_build)
+
+    @mock.patch.object(sys, 'argv', ['kolla-build'])
+    @mock.patch.object(build.KollaWorker, 'set_time')
+    @mock.patch(engine_client)
+    def test_run_build_buildkit_skips_set_time(self, mock_client,
+                                               mock_set_time):
+        build.run_build()
+        mock_set_time.assert_not_called()
+
+    @mock.patch.object(sys, 'argv', ['kolla-build', '--nobuildkit'])
+    @mock.patch.object(build.KollaWorker, 'set_time')
+    @mock.patch(engine_client)
+    def test_run_build_no_buildkit_sets_time(self, mock_client,
+                                             mock_set_time):
+        build.run_build()
+        mock_set_time.assert_called_once_with()
 
     @mock.patch.object(build, 'run_build')
     def test_skipped_images(self, mock_run_build):

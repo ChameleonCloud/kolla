@@ -159,9 +159,13 @@ def run_build():
         LOG.info('Dockerfiles are generated in %s', kolla.working_dir)
         return
 
-    # We set the atime and mtime to 0 epoch to preserve allow the Docker cache
-    # to work like we want. A different size or hash will still force a rebuild
-    kolla.set_time()
+    # The legacy Docker builder and Podman include file mtimes in their layer
+    # cache keys, so pin them to 0 epoch to keep the cache valid across runs.
+    # BuildKit's layer cache ignores mtimes, and its incremental build
+    # context transfer treats files with equal size and mtime as unchanged,
+    # so pinned mtimes would make it reuse stale files from a previous build.
+    if not (conf.engine == engine.Engine.DOCKER.value and conf.buildkit):
+        kolla.set_time()
 
     if conf.save_dependency:
         kolla.save_dependency(conf.save_dependency)

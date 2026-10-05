@@ -286,8 +286,11 @@ class BuildTask(EngineTask):
             image.status = Status.ERROR
             return
 
-        # Set time on destination archive to epoch 0
-        os.utime(dest_archive, (0, 0))
+        # Set time on destination archive to epoch 0, except with BuildKit,
+        # which needs real mtimes to detect changed files (see
+        # kolla.image.build.run_build).
+        if not self._buildkit_active:
+            os.utime(dest_archive, (0, 0))
 
         return dest_archive
 

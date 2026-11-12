@@ -6,5 +6,3 @@ if [[ "${!KOLLA_BOOTSTRAP[@]}" ]]; then
     zun-db-manage upgrade
     exit 0
 fi
-
-. /usr/local/bin/kolla_httpd_setup

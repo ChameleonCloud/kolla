@@ -229,7 +229,7 @@ USERS = {
         'uid': 42462,
         'gid': 42462,
     },
-    'zun-user': {  # unused user (zun dropped)
+    'zun-user': {
         'uid': 42463,
         'gid': 42463,
     },
@@ -253,7 +253,7 @@ USERS = {
         'uid': 42468,
         'gid': 42468,
     },
-    'kuryr-user': {  # unused user (kuryr dropped)
+    'kuryr-user': {
         'uid': 42469,
         'gid': 42469,
     },

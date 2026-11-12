@@ -139,6 +139,10 @@ SOURCES = {
         'type': 'url',
         'location': ('$tarballs_base/openstack/watcher-dashboard/'
                      'watcher-dashboard-${openstack_branch}.tar.gz')},
+    'horizon-plugin-zun-ui': {
+        'type': 'url',
+        'location': ('$tarballs_base/openstack/zun-ui/'
+                     'zun-ui-${openstack_branch}.tar.gz')},
     'ironic-base': {
         'type': 'url',
         'location': ('$tarballs_base/openstack/ironic/'
@@ -156,6 +160,14 @@ SOURCES = {
         'type': 'url',
         'location': ('$tarballs_base/openstack/requirements/'
                      'requirements-${openstack_branch}.tar.gz')},
+    'kuryr-base': {
+        'type': 'url',
+        'location': ('$tarballs_base/openstack/kuryr/'
+                     'kuryr-${openstack_branch}.tar.gz')},
+    'kuryr-libnetwork': {
+        'type': 'url',
+        'location': ('$tarballs_base/openstack/kuryr-libnetwork/'
+                     'kuryr-libnetwork-${openstack_branch}.tar.gz')},
     'letsencrypt-lego': {
         'version': 'v4.27.0',
         'type': 'url',
@@ -428,5 +440,9 @@ SOURCES = {
     'watcher-base': {
         'type': 'url',
         'location': ('$tarballs_base/openstack/watcher/'
-                     'watcher-${openstack_branch}.tar.gz')}
+                     'watcher-${openstack_branch}.tar.gz')},
+    'zun-base': {
+        'type': 'url',
+        'location': ('$tarballs_base/openstack/zun/'
+                     'zun-${openstack_branch}.tar.gz')}
 }
